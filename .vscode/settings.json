@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "array": "cpp",
+        "map": "cpp",
+        "system_error": "cpp",
+        "mutex": "cpp",
+        "condition_variable": "cpp",
+        "random": "cpp",
+        "limits": "cpp",
+        "xmemory": "cpp"
+    },
+    "cmake.configureOnOpen": false
+}
