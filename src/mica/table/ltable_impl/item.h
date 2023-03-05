@@ -30,6 +30,11 @@ uint16_t LTable<StaticConfig>::calc_tag(uint64_t key_hash) {
 }
 
 template <class StaticConfig>
+uint8_t LTable<StaticConfig>::calc_tenant_id(const char* key){
+  return static_cast<uint8_t>((unsigned char)(*key) >> BasicLTableConfig::kNeedMove);
+}
+
+template <class StaticConfig>
 void LTable<StaticConfig>::set_item(Item* item, uint64_t key_hash,
                                     const char* key, uint32_t key_length,
                                     const char* value, uint32_t value_length) {

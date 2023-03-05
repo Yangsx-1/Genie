@@ -137,7 +137,7 @@ class Partitions : public ProcessorInterface<typename StaticConfig::Table> {
   size_t total_size_;
   size_t total_item_count_;
   double extra_collision_avoidance_;
-  double mth_threshold_;
+  //double mth_threshold_;
   std::vector<uint16_t> lcores_;
 
   uint16_t owner_lcore_ids_[StaticConfig::kMaxPartitionCount];

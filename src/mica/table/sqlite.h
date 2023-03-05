@@ -190,17 +190,6 @@ class Sqlite : public TableInterface {
     return result;
   }
 
-  Result increment(uint64_t key_hash, const char* key, size_t key_length,
-                   uint64_t increment, uint64_t* out_value) {
-    // TODO: Implement.
-    (void)key_hash;
-    (void)key;
-    (void)key_length;
-    (void)increment;
-    (void)out_value;
-    return Result::kNotSupported;
-  }
-
   Result set(uint64_t key_hash, const char* key, size_t key_length,
              const char* value, size_t value_length, bool overwrite) {
     ScopedLock l(this);

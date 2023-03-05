@@ -55,7 +55,7 @@ class SegregatedFit : public PoolInterface {
   ~SegregatedFit();
 
   typedef uint64_t Offset;
-  static constexpr size_t kOffsetWidth = 40;
+  static constexpr size_t kOffsetWidth = 32;
   static constexpr Offset kInsufficientSpace =
       std::numeric_limits<Offset>::max();
 

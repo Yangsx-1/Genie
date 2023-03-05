@@ -30,17 +30,18 @@ Result LTable<StaticConfig>::del(uint64_t key_hash, const char* key,
   } else  // if (std::is_base_of<::mica::pool::SegregatedFitTag,
           // Pool::Tag>::value)
   {
-    pool_->lock();
+    //pool_->lock();
   }
-
-  pool_->release(get_item_offset(located_bucket->item_vec[item_index]));
+  uint64_t item_vec = located_bucket->item_vec[item_index];
+  Pool* pool_ = pools_[get_item_tenant_id(item_vec)];
+  pool_->release(get_item_offset(item_vec));
 
   if (std::is_base_of<::mica::pool::CircularLogTag,
                       typename Pool::Tag>::value) {
   } else  // if (std::is_base_of<::mica::pool::SegregatedFitTag,
           // Pool::Tag>::value)
   {
-    pool_->unlock();
+    //pool_->unlock();
   }
 
   located_bucket->item_vec[item_index] = 0;

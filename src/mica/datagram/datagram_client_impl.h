@@ -410,8 +410,7 @@ void DatagramClient<StaticConfig>::probe_send(EndpointId eid,
   uint32_t opaque =
       (static_cast<uint32_t>(kNullRD) << 16) | static_cast<uint32_t>(sei.eid);
 
-  b.append_request(Operation::kNoopRead, Result::kSuccess, opaque, 0, nullptr,
-                   0, nullptr, 0);
+  //b.append_request(Operation::kNoopRead, Result::kSuccess, opaque, 0, nullptr, 0, nullptr, 0);
 
   b.finalize();
 
@@ -575,25 +574,6 @@ void DatagramClient<StaticConfig>::handle_response(ResponseHandler& rh) {
 
 template <class StaticConfig>
 typename DatagramClient<StaticConfig>::RequestDescriptor
-DatagramClient<StaticConfig>::noop_read(uint64_t key_hash, const char* key,
-                                        size_t key_length,
-                                        const Argument& arg) {
-  return append_request(Operation::kNoopRead, key_hash, key, key_length,
-                        nullptr, 0, arg);
-}
-
-template <class StaticConfig>
-typename DatagramClient<StaticConfig>::RequestDescriptor
-DatagramClient<StaticConfig>::noop_write(uint64_t key_hash, const char* key,
-                                         size_t key_length, const char* value,
-                                         size_t value_length,
-                                         const Argument& arg) {
-  return append_request(Operation::kNoopWrite, key_hash, key, key_length, value,
-                        value_length, arg);
-}
-
-template <class StaticConfig>
-typename DatagramClient<StaticConfig>::RequestDescriptor
 DatagramClient<StaticConfig>::del(uint64_t key_hash, const char* key,
                                   size_t key_length, const Argument& arg) {
   return append_request(Operation::kDelete, key_hash, key, key_length, nullptr,
@@ -610,20 +590,11 @@ DatagramClient<StaticConfig>::get(uint64_t key_hash, const char* key,
 
 template <class StaticConfig>
 typename DatagramClient<StaticConfig>::RequestDescriptor
-DatagramClient<StaticConfig>::increment(uint64_t key_hash, const char* key,
-                                        size_t key_length, uint64_t increment,
-                                        const Argument& arg) {
-  return append_request(Operation::kIncrement, key_hash, key, key_length,
-                        &increment, sizeof(uint64_t), arg);
-}
-
-template <class StaticConfig>
-typename DatagramClient<StaticConfig>::RequestDescriptor
 DatagramClient<StaticConfig>::set(uint64_t key_hash, const char* key,
                                   size_t key_length, const char* value,
                                   size_t value_length, bool overwrite,
                                   const Argument& arg) {
-  return append_request(overwrite ? Operation::kSet : Operation::kAdd, key_hash,
+  return append_request(Operation::kSet, key_hash,
                         key, key_length, value, value_length, arg);
 }
 
@@ -670,8 +641,7 @@ DatagramClient<StaticConfig>::append_request(
   if (StaticConfig::kIgnoreServerPartition)
     spread_request = true;
   else {
-    if (operation == Operation::kNoopRead || operation == Operation::kGet ||
-        operation == Operation::kTest)
+    if (operation == Operation::kGet || operation == Operation::kTest)
       spread_request = s.concurrent_read != 0;
     else
       spread_request = s.concurrent_write != 0;

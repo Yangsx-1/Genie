@@ -125,7 +125,6 @@ int worker_proc(void* arg) {
       client.handle_response(rh);
     }
 
-    if (!use_noop) {//use_noop = false;
     /*
     In fact, the key and the value are both 8 bytes in the original version of mica.
     To realize multi-tenant serverless KVS, we modify the key and value size so that 
@@ -134,21 +133,13 @@ int worker_proc(void* arg) {
     specified_value_length: from argv
     We modify these parameters to get() and set(), and memcpy the paddings in append_request() function.
     */
-      if (is_get)
-        //client.get(key_hash, key, key_length);
-        client.get(key_hash, key, specified_key_length);
-      else {
-        value_i = seq;
-        //client.set(key_hash, key, key_length, value, value_length, true);
-        client.set(key_hash, key, specified_key_length, value, specified_value_length, true);
-      }
-    } else {
-      if (is_get)
-        client.noop_read(key_hash, key, key_length);
-      else {
-        value_i = seq;
-        client.noop_write(key_hash, key, key_length, value, value_length);
-      }
+    if (is_get)
+      //client.get(key_hash, key, key_length);
+      client.get(key_hash, key, specified_key_length);
+    else {
+      value_i = seq;
+      //client.set(key_hash, key, key_length, value, value_length, true);
+      client.set(key_hash, key, specified_key_length, value, specified_value_length, true);
     }
 
     seq++;

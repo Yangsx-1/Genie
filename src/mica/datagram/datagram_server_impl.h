@@ -123,6 +123,7 @@ void DatagramServer<StaticConfig>::run() {
   directory_thread_ = std::thread(directory_proc_wrapper, this);
 
   reset_status();
+  //reset_tenant_status();
 
   // Launch workers.
   std::vector<std::pair<DatagramServer<StaticConfig>*, uint16_t>> args(
@@ -238,6 +239,7 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
       if (time_diff >= 1.) {
         last_status_report = now;
         report_status(time_diff);
+        report_tenant_status(time_diff);
       }
     }
 
@@ -324,6 +326,8 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
   uint64_t total_alive = 0;
   uint64_t total_operations_done = 0;
   uint64_t total_operations_succeeded = 0;
+  uint64_t total_get_done = 0;
+  uint64_t total_get_succeeded = 0;
 
   uint64_t rx_bursts = 0;
   uint64_t rx_packets = 0;
@@ -348,6 +352,18 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
       uint64_t v = worker_stats_[lcore_id].num_operations_succeeded;
       uint64_t& last_v = worker_stats_[lcore_id].last_num_operations_succeeded;
       total_operations_succeeded += v - last_v;
+      last_v = v;
+    }
+    {
+      uint64_t v = worker_stats_[lcore_id].num_get_done;
+      uint64_t& last_v = worker_stats_[lcore_id].last_get_done;
+      total_get_done += v - last_v;
+      last_v = v;
+    }
+    {
+      uint64_t v = worker_stats_[lcore_id].num_get_succeeded;
+      uint64_t& last_v = worker_stats_[lcore_id].last_get_succeeded;
+      total_get_succeeded += v - last_v;
       last_v = v;
     }
   }
@@ -394,9 +410,14 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
       static_cast<double>(total_operations_succeeded) /
       static_cast<double>(std::max(total_operations_done, uint64_t(1)));
 
+  double hit_rate =
+      static_cast<double>(total_get_succeeded) /
+      static_cast<double>(std::max(total_get_done, uint64_t(1)));
+
   printf("tput=%7.3lf Mops",
          static_cast<double>(total_operations_done) / time_diff / 1000000.);
   printf(", success_rate=%6.2lf%%", success_rate * 100.);
+  printf(", hit_rate=%6.2lf%%", hit_rate * 100.);
   printf(", RX=%7.3lf Mpps (%5.2lf ppb)",
          static_cast<double>(rx_packets) / time_diff / 1000000.,
          static_cast<double>(rx_packets) /
@@ -412,6 +433,72 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
 
   printf("\n");
   if (flush_status_report_) fflush(stdout);
+}
+
+/*template <class StaticConfig>
+void DatagramServer<StaticConfig>::reset_tenant_status() {
+  tenant_stats_.resize(0);
+  tenant_stats_.resize(::mica::table::BasicLTableConfig::kMaxTenantCount, {0, 0, 0, 0, 0});
+}*/
+
+
+template <class StaticConfig>
+void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
+  /**/
+  size_t tenantCount = ::mica::table::BasicLTableConfig::kTenantCount;
+
+  for(size_t tenant_id = 0; tenant_id < tenantCount; tenant_id++){
+    
+    uint64_t total_get_operations_done = 0;
+    uint64_t total_get_operations_succeeded = 0;
+    uint64_t total_operations_done = 0;
+    uint64_t total_operations_succeeded = 0;
+    time_diff = std::max(0.01, time_diff);
+    for (size_t lcore_id = 0; lcore_id < ::mica::util::lcore.lcore_count(); lcore_id++) {
+      {
+        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].get_done;
+        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_get_done;
+        total_get_operations_done += v - last_v;
+        last_v = v;
+      }
+      {
+        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].get_succeeded;
+        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_get_succeeded;
+        total_get_operations_succeeded += v - last_v;
+        last_v = v;
+      }
+      {
+        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].operations_done;
+        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_operations_done;
+        total_operations_done += v - last_v;
+        last_v = v;
+      }
+      {
+        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].operations_succeeded;
+        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_operations_succeeded;
+        total_operations_succeeded += v - last_v;
+        last_v = v;
+      }
+    }
+
+    double get_success_rate =
+        static_cast<double>(total_get_operations_succeeded) /
+        static_cast<double>(std::max(total_get_operations_done, uint64_t(1)));
+
+    double success_rate =
+        static_cast<double>(total_operations_succeeded) /
+        static_cast<double>(std::max(total_operations_done, uint64_t(1)));
+
+    printf("tenant_id=%lu", tenant_id);
+    printf(", tput=%7.3lf Mops",
+         static_cast<double>(total_operations_done) / time_diff / 1000000.);
+    printf(", success_rate=%6.2lf%%", success_rate * 100.);
+    printf(", hit_rate=%6.2lf%%", get_success_rate * 100.);
+    printf("\n");
+  }
+
+  if (flush_status_report_) fflush(stdout);
+
 }
 
 template <class StaticConfig>
@@ -548,7 +635,7 @@ uint32_t DatagramServer<StaticConfig>::RequestAccessor::get_opaque(
 template <class StaticConfig>
 void DatagramServer<StaticConfig>::RequestAccessor::retire(size_t index) {
   assert(index == next_index_to_retire_);
-
+  uint8_t tenant_id = static_cast<uint8_t>((unsigned char)(*this->get_key(index)) >> ::mica::table::BasicLTableConfig::kNeedMove);
   if (StaticConfig::kVerbose)
     printf("lcore %2zu: retire: %zu\n", ::mica::util::lcore.lcore_id(), index);
 
@@ -574,8 +661,25 @@ void DatagramServer<StaticConfig>::RequestAccessor::retire(size_t index) {
 
   // Update stats.
   worker_stats_->num_operations_done++;
-  if (pending_response_batch_.result == Result::kSuccess)
+  worker_stats_->tenant_stats_[tenant_id].operations_done++;
+  Result tmp_result = pending_response_batch_.result;
+  if (tmp_result == Result::kSuccess){//set success
     worker_stats_->num_operations_succeeded++;
+
+    worker_stats_->tenant_stats_[tenant_id].operations_succeeded++;
+  }
+  else if(tmp_result == Result::kGetSuccess){//get success
+    worker_stats_->num_operations_succeeded++;
+    worker_stats_->num_get_done++;
+    worker_stats_->num_get_succeeded++;
+
+    worker_stats_->tenant_stats_[tenant_id].operations_succeeded++;
+    worker_stats_->tenant_stats_[tenant_id].get_done++;
+    worker_stats_->tenant_stats_[tenant_id].get_succeeded++;
+  }else{//get fail
+    worker_stats_->num_get_done++;
+    worker_stats_->tenant_stats_[tenant_id].get_done++;
+  }
 
   next_index_to_retire_++;
 }

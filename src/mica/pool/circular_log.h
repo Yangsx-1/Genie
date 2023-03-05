@@ -41,7 +41,7 @@ class CircularLog : public PoolInterface {
 
   typedef typename StaticConfig::Alloc Alloc;
 
-  CircularLog(const ::mica::util::Config& config, Alloc* alloc);
+  CircularLog(const ::mica::util::Config& config, Alloc* alloc, uint8_t tenant_id);
   ~CircularLog();
 
   typedef uint64_t Offset;
@@ -119,7 +119,7 @@ class CircularLog : public PoolInterface {
 
   ::mica::util::Config config_;
   Alloc* alloc_;
-
+  uint8_t tenant_id_;
   uint8_t concurrent_access_mode_;
   char* data_;
 

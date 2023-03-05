@@ -7,8 +7,8 @@ namespace mica {
 namespace pool {
 template <class StaticConfig>
 CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
-                                       Alloc* alloc)
-    : config_(config), alloc_(alloc) {
+                                       Alloc* alloc, uint8_t tenant_id)
+    : config_(config), alloc_(alloc),  tenant_id_(tenant_id) {
   uint64_t size = config.get("size").get_uint64();
   bool concurrent_read = config.get("concurrent_read").get_bool();
   bool concurrent_write = config.get("concurrent_write").get_bool();
@@ -402,7 +402,7 @@ bool CircularLog<StaticConfig>::resize_log(){
   if(!(log_resize_flag >> 4)){
     if(tail_ > get_ma_thres()){
       uint64_t msize = 1024 * 1024;
-      uint64_t eaet_log_size = 2 * 1024 * msize;
+      uint64_t eaet_log_size = 512 * msize;
       if (eaet_log_size < kAdjustMinimumSize) {
         new_log_size_ = kAdjustMinimumSize;
       }

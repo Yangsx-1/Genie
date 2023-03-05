@@ -39,6 +39,11 @@ struct BasicLTableConfig {
   // Collect fine-grained statistics accessible via print_stats() and
   // reset_stats().
   static constexpr bool kCollectStats = false;
+
+  //The maximum number of tenants to support.
+  static constexpr size_t kMaxTenantCount = 255;
+  static constexpr size_t kTenantCount = 8;//need to be 2 ^ x
+  static constexpr size_t kNeedMove = 5;//need to be 2 ^ x
 };
 
 struct BasicLossyLTableConfig : public BasicLTableConfig {
@@ -82,13 +87,13 @@ class LTable : public TableInterface {
   // static constexpr size_t kBucketSize = StaticConfig::kBucketSize;
   static constexpr size_t kMaxKeyLength = 255;
   static constexpr size_t kMaxValueLength = 1048575;
-
+  //The maximum number of tenants to support.
+  static constexpr size_t kMaxTenantCount = BasicLTableConfig::kMaxTenantCount;
+  static constexpr size_t kTenantCount = BasicLTableConfig::kTenantCount;
   // ltable_impl/init.h
-  LTable(const ::mica::util::Config& config, Alloc* alloc, Pool* pool);
+  LTable(const ::mica::util::Config& config, Alloc* alloc, uint64_t table_pool_size);
   ~LTable();
-
   void reset();
-
   // ltable_impl/del.h
   Result del(uint64_t key_hash, const char* key, size_t key_length);
 
@@ -96,10 +101,6 @@ class LTable : public TableInterface {
   Result get(uint64_t key_hash, const char* key, size_t key_length,
              char* out_value, size_t in_value_length, size_t* out_value_length,
              bool allow_mutation) const;
-
-  // ltable_impl/increment.h
-  Result increment(uint64_t key_hash, const char* key, size_t key_length,
-                   uint64_t increment, uint64_t* out_value);
 
   // ltable_impl/set.h
   Result set(uint64_t key_hash, const char* key, size_t key_length,
@@ -160,7 +161,7 @@ class LTable : public TableInterface {
      *@Author: Huijuan Xiao
      *@Description: kItemOffsetMask 48 -> 40
     */
-    static constexpr uint64_t kItemOffsetMask = (uint64_t(1) << 40) - 1;
+    static constexpr uint64_t kItemOffsetMask = (uint64_t(1) << 32) - 1;
     /*
      *@Author: Huijuan Xiao
      *@Description: The bucket size should be 128 byte, which occupies two cache lines.
@@ -199,8 +200,9 @@ class LTable : public TableInterface {
   static uint16_t get_tag(uint64_t item_vec);
   static uint64_t get_item_offset(uint64_t item_vec);
   static uint8_t get_item_wrap_around_number(uint64_t item_vec);
+  static uint8_t get_item_tenant_id(uint64_t item_vec);
   //static uint64_t make_item_vec(uint16_t tag, uint64_t item_offset);
-  static uint64_t make_item_vec(uint16_t tag, uint8_t wrap_number, uint64_t item_offset);
+  static uint64_t make_item_vec(uint16_t tag, uint8_t tenant_id, uint8_t wrap_number, uint64_t item_offset);
   uint32_t calc_bucket_index(uint64_t key_hash) const;
   static bool has_extra_bucket(const Bucket* bucket);
   const Bucket* get_extra_bucket(uint32_t extra_bucket_index) const;
@@ -233,6 +235,7 @@ class LTable : public TableInterface {
   static uint32_t make_kv_length_vec(uint32_t key_length,
                                      uint32_t value_length);
   static uint16_t calc_tag(uint64_t key_hash);
+  static uint8_t calc_tenant_id(const char* key);
   static void set_item(Item* item, uint64_t key_hash, const char* key,
                        uint32_t key_length, const char* value,
                        uint32_t value_length);
@@ -256,7 +259,7 @@ class LTable : public TableInterface {
 
   ::mica::util::Config config_;
   Alloc* alloc_;
-  Pool* pool_;
+  Pool* pools_[kTenantCount];
 
   Bucket* buckets_;
   Bucket* extra_buckets_;  // = (buckets + num_buckets); extra_buckets[0] is
@@ -269,8 +272,8 @@ class LTable : public TableInterface {
   uint32_t num_buckets_;
   uint32_t num_buckets_mask_; 
   uint32_t num_extra_buckets_;
-
-  uint64_t mth_threshold_;
+  uint64_t pool_size_;
+  //uint64_t mth_threshold_;
 
   // Padding to separate static and dynamic fields.
   char padding0[128];
@@ -286,7 +289,6 @@ class LTable : public TableInterface {
 #include "mica/table/ltable_impl/bucket.h"
 #include "mica/table/ltable_impl/del.h"
 #include "mica/table/ltable_impl/get.h"
-#include "mica/table/ltable_impl/increment.h"
 #include "mica/table/ltable_impl/info.h"
 #include "mica/table/ltable_impl/init.h"
 #include "mica/table/ltable_impl/item.h"

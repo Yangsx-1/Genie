@@ -10,8 +10,12 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
                                  size_t value_length, bool overwrite) {
   assert(key_length <= kMaxKeyLength);
   assert(value_length <= kMaxValueLength);
+  
 
   uint32_t bucket_index = calc_bucket_index(key_hash);
+  uint8_t tenant_id = calc_tenant_id(key);
+  //printf("tenant%d in set!\n", tenant_id);
+  Pool* pool_ = pools_[tenant_id];
   uint16_t tag = calc_tag(key_hash);
 
   Bucket* bucket = buckets_ + bucket_index;
@@ -145,7 +149,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
     stat_dec(&Stats::count);
   }
 
-  located_bucket->item_vec[item_index] = make_item_vec(tag, new_item_wrap_number, new_item_offset);
+  located_bucket->item_vec[item_index] = make_item_vec(tag, tenant_id, new_item_wrap_number, new_item_offset);
 
   unlock_bucket(bucket);
 

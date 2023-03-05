@@ -7,15 +7,10 @@
 namespace mica {
 namespace processor {
 enum class Operation {
-  kReset = 0,
-  kNoopRead,
-  kNoopWrite,
-  kAdd,
-  kSet,
+  kSet = 0,
   kGet,
   kTest,
   kDelete,
-  kIncrement,
 };
 }
 }

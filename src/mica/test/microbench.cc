@@ -417,9 +417,6 @@ void benchmark(double zipf_theta) {
       if (op_count[thread_id] < max_num_operations_per_thread) {
         uint8_t op_type;
         switch (benchmark_mode) {
-          case BenchmarkMode::kAdd:
-            op_type = static_cast<uint8_t>(Operation::kAdd);
-            break;
           case BenchmarkMode::kSet:
           case BenchmarkMode::kSet1:
             op_type = static_cast<uint8_t>(Operation::kSet);
@@ -436,10 +433,6 @@ void benchmark(double zipf_theta) {
             break;
           case BenchmarkMode::kDelete:
             op_type = static_cast<uint8_t>(Operation::kDelete);
-            break;
-          default:
-            assert(false);
-            op_type = static_cast<uint8_t>(Operation::kNoopRead);
             break;
         }
         op_types[thread_id][op_count[thread_id]] = op_type;

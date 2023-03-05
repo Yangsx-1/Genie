@@ -94,6 +94,20 @@ class DatagramServer {
     } pending_tx;
   };
 
+  struct TenantStats {
+    uint64_t get_done;
+    uint64_t get_succeeded;
+
+    uint64_t operations_done;
+    uint64_t operations_succeeded;
+
+    uint64_t last_get_done;
+    uint64_t last_get_succeeded;
+
+    uint64_t last_operations_done;
+    uint64_t last_operations_succeeded;
+  };//__attribute__((aligned(128)));
+
   struct WorkerStats {
     uint64_t alive;
     uint64_t num_operations_done;
@@ -101,7 +115,15 @@ class DatagramServer {
 
     uint64_t last_num_operations_done;
     uint64_t last_num_operations_succeeded;
-  } __attribute__((aligned(128)));
+
+    uint64_t num_get_done;
+    uint64_t num_get_succeeded;
+
+    uint64_t last_get_done;
+    uint64_t last_get_succeeded;
+
+    TenantStats tenant_stats_[::mica::table::BasicLTableConfig::kTenantCount];
+  }__attribute__((aligned(256)));
 
   struct EndpointStats {
     uint64_t last_rx_bursts;
@@ -110,6 +132,8 @@ class DatagramServer {
     uint64_t last_tx_packets;
     uint64_t last_tx_dropped;
   };
+
+
 
   // Directory service support.
   void generate_server_info();
@@ -129,7 +153,9 @@ class DatagramServer {
   // Diagnosis.
   void reset_status();
   void report_status(double time_diff);
-
+  /*todoxhj  Add tenant status*/
+  //void reset_tenant_status();
+  void report_tenant_status(double time_diff);
   // Request accessor to supply the request processor with requests.
   class RequestAccessor : public ::mica::processor::RequestAccessorInterface {
    public:
@@ -161,6 +187,7 @@ class DatagramServer {
 
     DatagramServer<StaticConfig>* server_;
     WorkerStats* worker_stats_;
+
     uint16_t lcore_id_;
 
     RXTXState* rx_tx_state_;

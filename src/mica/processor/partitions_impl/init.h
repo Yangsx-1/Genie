@@ -30,7 +30,7 @@ Partitions<StaticConfig>::Partitions(const ::mica::util::Config& config,
   extra_collision_avoidance_ =
       config.get("extra_collision_avoidance").get_double(-1.);
 
-  mth_threshold_ = config.get("mth_threshold").get_double(0.5);
+  //mth_threshold_ = config.get("mth_threshold").get_double(0.5);
 
   concurrent_read_ = config.get("concurrent_read").get_bool() ? 1 : 0;
   concurrent_write_ = config.get("concurrent_write").get_bool() ? 1 : 0;
@@ -56,7 +56,7 @@ template <class StaticConfig>
 Partitions<StaticConfig>::~Partitions() {
   for (size_t i = 0; i < partition_count_; i++) {
     delete tables_[i];
-    delete pools_[i];
+    //delete pools_[i];
   }
 }
 
@@ -79,11 +79,12 @@ void Partitions<StaticConfig>::initialize() {
     auto pool_config = ::mica::util::Config::empty_dict(
         std::string() + "[derived from " + config_.get_path() +
         " by Partitions]");
-    pool_config.insert_uint64("size", total_size_ / partition_count_);
+    //pool_config.insert_uint64("size", total_size_ / partition_count_);
     pool_config.insert_bool("concurrent_read", concurrent_read_);
     pool_config.insert_bool("concurrent_write", concurrent_write_);
     pool_config.insert_uint64("numa_node",
                               ::mica::util::lcore.numa_id(current_lcore_id));
+    uint64_t size_per_table_ = static_cast<uint64_t>(total_size_ / partition_count_);
 
     auto table_config = ::mica::util::Config::empty_dict(
         std::string() + "[derived from " + config_.get_path() +
@@ -97,11 +98,11 @@ void Partitions<StaticConfig>::initialize() {
     table_config.insert_bool("concurrent_write", concurrent_write_);
     table_config.insert_uint64("numa_node",
                                ::mica::util::lcore.numa_id(current_lcore_id));
-    table_config.insert_double("mth_threshold", mth_threshold_);
+    //table_config.insert_double("mth_threshold", mth_threshold_);
 
     owner_lcore_ids_[i] = current_lcore_id;
-    pools_[i] = new Pool(pool_config, alloc_);
-    tables_[i] = new Table(table_config, alloc_, pools_[i]);
+    //pools_[i] = new Pool(pool_config, alloc_);
+    tables_[i] = new Table(table_config, alloc_, size_per_table_);
 
     if (StaticConfig::kVerbose) {
       printf("= Partition %zu at lcore %hu\n", i, current_lcore_id);

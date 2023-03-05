@@ -17,6 +17,9 @@ enum class Result {
   kNotSupported,
   kTimedOut,
   kRejected,
+
+  kGetSuccess,
+  kGetNotFound,
 };
 }
 }

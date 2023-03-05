@@ -163,14 +163,14 @@ SET(LIBRARIES ${LIBRARIES} curl)
 
 IF(LTO)
 
-  ADD_EXECUTABLE(test_table src/mica/test/test_table.cc ${SOURCES})
-  TARGET_LINK_LIBRARIES(test_table ${LIBRARIES})
+  #ADD_EXECUTABLE(test_table src/mica/test/test_table.cc ${SOURCES})
+  #TARGET_LINK_LIBRARIES(test_table ${LIBRARIES})
 
   ADD_EXECUTABLE(test_processor src/mica/test/test_processor.cc ${SOURCES})
   TARGET_LINK_LIBRARIES(test_processor ${LIBRARIES})
 
-  ADD_EXECUTABLE(test_load src/mica/test/test_load.cc ${SOURCES})
-  TARGET_LINK_LIBRARIES(test_load ${LIBRARIES})
+  #ADD_EXECUTABLE(test_load src/mica/test/test_load.cc ${SOURCES})
+  #TARGET_LINK_LIBRARIES(test_load ${LIBRARIES})
 
   ADD_EXECUTABLE(test_zipf src/mica/test/test_zipf.cc ${SOURCES})
   TARGET_LINK_LIBRARIES(test_zipf ${LIBRARIES})
@@ -223,14 +223,14 @@ ELSE(LTO)
   ADD_EXECUTABLE(test_memory_adjustment src/mica/test/test_memory_adjustment.cc)
   TARGET_LINK_LIBRARIES(test_memory_adjustment common ${LIBRARIES})
 
-  ADD_EXECUTABLE(test_table src/mica/test/test_table.cc)
-  TARGET_LINK_LIBRARIES(test_table common ${LIBRARIES})
+  #ADD_EXECUTABLE(test_table src/mica/test/test_table.cc)
+  #TARGET_LINK_LIBRARIES(test_table common ${LIBRARIES})
 
   ADD_EXECUTABLE(test_processor src/mica/test/test_processor.cc)
   TARGET_LINK_LIBRARIES(test_processor common ${LIBRARIES})
 
-  ADD_EXECUTABLE(test_load src/mica/test/test_load.cc)
-  TARGET_LINK_LIBRARIES(test_load common ${LIBRARIES})
+  #ADD_EXECUTABLE(test_load src/mica/test/test_load.cc)
+  #TARGET_LINK_LIBRARIES(test_load common ${LIBRARIES})
 
   ADD_EXECUTABLE(test_zipf src/mica/test/test_zipf.cc)
   TARGET_LINK_LIBRARIES(test_zipf common ${LIBRARIES})

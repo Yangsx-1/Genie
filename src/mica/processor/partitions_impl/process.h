@@ -120,17 +120,12 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
 
       bool accept;
       switch (operation) {
-        case Operation::kNoopRead:
         case Operation::kGet:
         case Operation::kTest:
           accept = concurrent_read_ || owner_lcore_id == lcore_id;
           break;
-        case Operation::kReset:
-        case Operation::kNoopWrite:
-        case Operation::kAdd:
         case Operation::kSet:
         case Operation::kDelete:
-        case Operation::kIncrement:
           accept = concurrent_write_ || owner_lcore_id == lcore_id;
           break;
         default:
@@ -151,24 +146,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
         Result result;
 
         load_stats_[lcore_id].request_count[partition_id]++;
-
         switch (operation) {
-          case Operation::kReset:
-            for (auto& table : tables_) table->reset();
-            result = Result::kSuccess;
-            ra.set_out_value_length(index, 0);
-            break;
-          case Operation::kNoopRead:
-          case Operation::kNoopWrite:
-            result = Result::kSuccess;
-            ra.set_out_value_length(index, 0);
-            break;
-          case Operation::kAdd: {
-            result = table->set(key_hash, ra.get_key(index),
-                                ra.get_key_length(index), ra.get_value(index),
-                                ra.get_value_length(index), false);
-            ra.set_out_value_length(index, 0);
-          } break;
           case Operation::kSet: {
             result = table->set(key_hash, ra.get_key(index),
                                 ra.get_key_length(index), ra.get_value(index),
@@ -187,7 +165,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
             result = table->get(
                 key_hash, ra.get_key(index), ra.get_key_length(index),
                 out_value, out_value_length, &out_value_length, allow_mutation);
-            if (result == Result::kSuccess || result == Result::kPartialValue)
+            if (result == Result::kGetSuccess || result == Result::kPartialValue)
               ra.set_out_value_length(index, out_value_length);
             else
               ra.set_out_value_length(index, 0);
@@ -201,26 +179,6 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
             result = table->del(key_hash, ra.get_key(index),
                                 ra.get_key_length(index));
             ra.set_out_value_length(index, 0);
-          } break;
-          case Operation::kIncrement: {
-            auto out_value = ra.get_out_value(index);
-            auto in_value_length = ra.get_value_length(index);
-            auto out_value_length = ra.get_out_value_length(index);
-            if (in_value_length != sizeof(uint64_t) ||
-                out_value_length < sizeof(uint64_t)) {
-              result = Result::kError;
-              ra.set_out_value_length(index, 0);
-            } else {
-              auto increment =
-                  *reinterpret_cast<const uint64_t*>(ra.get_value(index));
-              result = table->increment(key_hash, ra.get_key(index),
-                                        ra.get_key_length(index), increment,
-                                        reinterpret_cast<uint64_t*>(out_value));
-              if (result == Result::kSuccess)
-                ra.set_out_value_length(index, sizeof(uint64_t));
-              else
-                ra.set_out_value_length(index, 0);
-            }
           } break;
           default:
             assert(false);
@@ -299,173 +257,6 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
   apply_pending_owner_lcore_changes();
 }
 
-/*
-template <class StaticConfig>
-template <class RequestAccessor>
-void Partitions<StaticConfig>::process(RequestAccessor& ra) {
-  size_t count = ra.count();
-
-  assert(::mica::util::lcore.lcore_id() != ::mica::util::LCore:kUnknown);
-  uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
-
-  size_t stage0_index = 0;
-  size_t stage1_index = 0;
-  size_t stage2_index = 0;
-  size_t stage3_index = 0;
-  uint16_t stage1_index_wrapped = 0;
-  uint16_t stage2_index_wrapped = 0;
-  uint16_t stage3_index_wrapped = 0;
-
-  uint16_t partition_ids[pipeline_size_];
-
-  while (stage3_index < count) {
-    if (StaticConfig::kVerbose)
-      printf("%zu - %zu - %zu - %zu | %zu\n", stage0_index, stage1_index,
-             stage2_index, stage3_index, count);
-    if (stage0_index < count && stage0_index - stage1_index < stage_gap_ * 1) {
-      ra.prefetch(stage0_index);
-      stage0_index++;
-    } else if (stage1_index < count &&
-               stage1_index - stage2_index < stage_gap_ * 1) {
-      auto operation = ra.get_operation(stage1_index);
-      switch (operation) {
-        case Operation::kReset:
-          break;
-        case Operation::kNoopRead:
-        case Operation::kNoopWrite:
-        case Operation::kAdd:
-        case Operation::kGet:
-        case Operation::kSet:
-        case Operation::kTest:
-        case Operation::kDelete:
-        case Operation::kIncrement: {
-          auto key_hash = ra.get_key_hash(stage1_index);
-          uint16_t partition_id =
-              get_partition_id(key_hash);
-          partition_ids[stage1_index_wrapped] = partition_id;
-          auto table = tables_[partition_id];
-          table->prefetch_table(key_hash);
-        } break;
-        default:
-          assert(false);
-          break;
-      }
-      stage1_index++;
-      stage1_index_wrapped++;
-      if (stage1_index_wrapped == pipeline_size_) stage1_index_wrapped = 0;
-    } else if (stage2_index < count &&
-               stage2_index - stage3_index < stage_gap_ * 1) {
-      switch (ra.get_operation(stage2_index)) {
-        case Operation::kReset:
-          break;
-        case Operation::kNoopRead:
-        case Operation::kNoopWrite:
-        case Operation::kAdd:
-        case Operation::kSet:
-        case Operation::kGet:
-        case Operation::kTest:
-        case Operation::kDelete:
-        case Operation::kIncrement: {
-          auto key_hash = ra.get_key_hash(stage2_index);
-          auto table = tables_[partition_ids[stage2_index_wrapped]];
-          table->prefetch_pool(key_hash);
-        } break;
-        default:
-          assert(false);
-          break;
-      }
-      stage2_index++;
-      stage2_index_wrapped++;
-      if (stage2_index_wrapped == pipeline_size_) stage2_index_wrapped = 0;
-    } else if (stage2_index > stage3_index) {
-      switch (ra.get_operation(stage3_index)) {
-        case Operation::kReset:
-          for (auto& table : tables_) table->reset();
-          break;
-        case Operation::kNoopRead:
-          *ra.get_out_value_length(stage3_index) = 0;
-          ra.set_result(stage3_index, Result::kSuccess);
-        case Operation::kNoopWrite:
-          ra.set_result(stage3_index, Result::kSuccess);
-          break;
-        case Operation::kAdd: {
-          auto key_hash = ra.get_key_hash(stage3_index);
-          auto table = tables_[partition_ids[stage3_index_wrapped]];
-          auto result = table->set(key_hash, ra.get_key(stage3_index),
-                                   ra.get_key_length(stage3_index),
-                                   ra.get_value(stage3_index),
-                                   ra.get_value_length(stage3_index), false);
-          ra.set_result(stage3_index, result);
-        } break;
-        case Operation::kSet: {
-          auto key_hash = ra.get_key_hash(stage3_index);
-          auto table = tables_[partition_ids[stage3_index_wrapped]];
-          auto result = table->set(key_hash, ra.get_key(stage3_index),
-                                   ra.get_key_length(stage3_index),
-                                   ra.get_value(stage3_index),
-                                   ra.get_value_length(stage3_index), true);
-          ra.set_result(stage3_index, result);
-        } break;
-        case Operation::kGet: {
-          auto key_hash = ra.get_key_hash(stage3_index);
-          auto partition_id = partition_ids[stage3_index_wrapped];
-          auto table = tables_[partition_id];
-          bool allow_mutation =
-              (concurrent_write_ ||
-               owner_lcore_ids_[partition_id] ==
-                   lcore_id);
-
-          auto out_value = ra.get_out_value(stage3_index);
-          auto in_value_length = ra.get_value_length(stage3_index);
-          auto out_value_length = ra.get_out_value_length(stage3_index);
-          auto result =
-              table->get(key_hash, ra.get_key(stage3_index),
-                         ra.get_key_length(stage3_index), out_value,
-                         in_value_length, out_value_length, allow_mutation);
-          ra.set_result(stage3_index, result);
-        } break;
-        case Operation::kTest: {
-          auto key_hash = ra.get_key_hash(stage3_index);
-          auto table = tables_[partition_ids[stage3_index_wrapped]];
-          auto result = table->test(key_hash, ra.get_key(stage3_index),
-                                    ra.get_key_length(stage3_index));
-          ra.set_result(stage3_index, result);
-        } break;
-        case Operation::kDelete: {
-          auto key_hash = ra.get_key_hash(stage3_index);
-          auto table = tables_[partition_ids[stage3_index_wrapped]];
-          auto result = table->del(key_hash, ra.get_key(stage3_index),
-                                   ra.get_key_length(stage3_index));
-          ra.set_result(stage3_index, result);
-        } break;
-        case Operation::kIncrement: {
-          auto key_hash = ra.get_key_hash(stage3_index);
-          auto table = tables_[partition_ids[stage3_index_wrapped]];
-          auto out_value = ra.get_out_value(stage3_index);
-          auto in_value_length = ra.get_value_length(stage3_index);
-          if (in_value_length != sizeof(uint64_t)) {
-            ra.set_result(stage3_index, Result::kError);
-            break;
-          }
-          auto increment =
-              *reinterpret_cast<const uint64_t*>(ra.get_value(stage3_index));
-          auto result =
-              table->increment(key_hash, ra.get_key(stage3_index),
-                               ra.get_key_length(stage3_index), increment,
-                               reinterpret_cast<uint64_t*>(out_value));
-          ra.set_result(stage3_index, result);
-        } break;
-        default:
-          assert(false);
-          break;
-      }
-      stage3_index++;
-      stage3_index_wrapped++;
-      if (stage3_index_wrapped == pipeline_size_) stage3_index_wrapped = 0;
-    }
-  }
-}
-*/
 }
 }
 

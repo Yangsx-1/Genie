@@ -14,7 +14,6 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
 
   uint32_t bucket_index = calc_bucket_index(key_hash);
   uint16_t tag = calc_tag(key_hash);
-
   const Bucket* bucket = buckets_ + bucket_index;
 
   bool partial_value;
@@ -28,13 +27,13 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     if (item_index == StaticConfig::kBucketSize) {
       if (version_start != read_version_end(bucket)) continue;//数据在被编辑，就等待
       stat_inc(&Stats::get_notfound);
-      return Result::kNotFound;
+      return Result::kGetNotFound;
     }
 
     uint64_t item_vec = located_bucket->item_vec[item_index];
     uint64_t item_offset = get_item_offset(item_vec);
     uint8_t item_wrap_number = get_item_wrap_around_number(item_vec);
-
+    Pool* pool_ = pools_[get_item_tenant_id(item_vec)];
     // we may read garbage data, but all operations relying on them are safe
     // here
     /*
@@ -65,7 +64,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
       }
 
       stat_inc(&Stats::get_notfound);
-      return Result::kNotFound;
+      return Result::kGetNotFound;
 
     }
     /******************************/
@@ -123,7 +122,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
       }
 
       stat_inc(&Stats::get_notfound);
-      return Result::kNotFound;
+      return Result::kGetNotFound;
     }
 
     if (version_start != read_version_end(bucket)) continue;
@@ -141,7 +140,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
   if (partial_value)
     return Result::kPartialValue;
   else
-    return Result::kSuccess;
+    return Result::kGetSuccess;
 }
 }
 }

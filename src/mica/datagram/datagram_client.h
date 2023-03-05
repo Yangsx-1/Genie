@@ -128,27 +128,11 @@ class DatagramClient {
   template <class ResponseHandler>
   void handle_response(ResponseHandler& rh);
 
-  // TODO
-  // void flush();
-
-  RequestDescriptor noop_read(uint64_t key_hash, const char* key,
-                              size_t key_length,
-                              const Argument& arg = Argument());
-
-  RequestDescriptor noop_write(uint64_t key_hash, const char* key,
-                               size_t key_length, const char* value,
-                               size_t value_length,
-                               const Argument& arg = Argument());
-
   RequestDescriptor del(uint64_t key_hash, const char* key, size_t key_length,
                         const Argument& arg = Argument());
 
   RequestDescriptor get(uint64_t key_hash, const char* key, size_t key_length,
                         const Argument& arg = Argument());
-
-  RequestDescriptor increment(uint64_t key_hash, const char* key,
-                              size_t key_length, uint64_t increment,
-                              const Argument& arg = Argument());
 
   RequestDescriptor set(uint64_t key_hash, const char* key, size_t key_length,
                         const char* value, size_t value_length, bool overwrite,

@@ -32,6 +32,7 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
   /*uint64_t distance_from_tail =
       (Specialization::get_tail(pool_) - item_offset) &
       Specialization::get_mask(pool_); */
+  Pool* pool_ = pools_[get_item_tenant_id(item_vec)];
   uint64_t pool_tail = Specialization::get_tail(pool_);
   uint64_t pool_size = Specialization::get_size(pool_);
   uint64_t distance_from_tail = 
@@ -62,7 +63,7 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
                                 reinterpret_cast<const char*>(item), item_size);
 
         located_bucket->item_vec[item_index] =
-            make_item_vec(get_tag(item_vec), new_item_wrap_number,new_item_offset);
+            make_item_vec(get_tag(item_vec), get_item_tenant_id(item_vec), new_item_wrap_number,new_item_offset);
 
         // success
         stat_inc(&Stats::move_to_head_performed);

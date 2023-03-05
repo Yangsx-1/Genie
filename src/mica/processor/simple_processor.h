@@ -54,22 +54,6 @@ class SimpleProcessor
       Result result;
 
       switch (operation) {
-        case Operation::kReset:
-          table->reset();
-          result = Result::kSuccess;
-          ra.set_out_value_length(index, 0);
-          break;
-        case Operation::kNoopRead:
-        case Operation::kNoopWrite:
-          result = Result::kSuccess;
-          ra.set_out_value_length(index, 0);
-          break;
-        case Operation::kAdd: {
-          result = table->set(key_hash, ra.get_key(index),
-                              ra.get_key_length(index), ra.get_value(index),
-                              ra.get_value_length(index), false);
-          ra.set_out_value_length(index, 0);
-        } break;
         case Operation::kSet: {
           result =
               table->set(key_hash, ra.get_key(index), ra.get_key_length(index),
@@ -96,26 +80,6 @@ class SimpleProcessor
           result =
               table->del(key_hash, ra.get_key(index), ra.get_key_length(index));
           ra.set_out_value_length(index, 0);
-        } break;
-        case Operation::kIncrement: {
-          auto out_value = ra.get_out_value(index);
-          auto in_value_length = ra.get_value_length(index);
-          auto out_value_length = ra.get_out_value_length(index);
-          if (in_value_length != sizeof(uint64_t) ||
-              out_value_length < sizeof(uint64_t)) {
-            result = Result::kError;
-            ra.set_out_value_length(index, 0);
-          } else {
-            auto increment =
-                *reinterpret_cast<const uint64_t*>(ra.get_value(index));
-            result = table->increment(key_hash, ra.get_key(index),
-                                      ra.get_key_length(index), increment,
-                                      reinterpret_cast<uint64_t*>(out_value));
-            if (result == Result::kSuccess)
-              ra.set_out_value_length(index, sizeof(uint64_t));
-            else
-              ra.set_out_value_length(index, 0);
-          }
         } break;
         default:
           assert(false);

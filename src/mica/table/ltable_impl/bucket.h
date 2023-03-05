@@ -17,14 +17,20 @@ uint64_t LTable<StaticConfig>::get_item_offset(uint64_t item_vec) {
 template <class StaticConfig>
 uint8_t LTable<StaticConfig>::get_item_wrap_around_number(uint64_t item_vec) {
   //uint64_t kWrapAroundMask = ((uint64_t(1) << 48) - 1) &(~((uint64_t(1) << 40) - 1));
+  return static_cast<uint8_t>(item_vec >> 32);
+}
+
+template <class StaticConfig>
+uint8_t LTable<StaticConfig>::get_item_tenant_id(uint64_t item_vec){
   return static_cast<uint8_t>(item_vec >> 40);
 }
 
 template <class StaticConfig>
-uint64_t LTable<StaticConfig>::make_item_vec(uint16_t tag,
+uint64_t LTable<StaticConfig>::make_item_vec(uint16_t tag, uint8_t tenant_id,
                                              uint8_t wrap_number, uint64_t item_offset) {
   uint64_t item_vector = (static_cast<uint64_t>(tag) << 48) | item_offset;
-  item_vector |=  (static_cast<uint64_t>(wrap_number) << 40);
+  item_vector |=  (static_cast<uint64_t>(tenant_id) << 40);
+  item_vector |=  (static_cast<uint64_t>(wrap_number) << 32);
   return item_vector;
   //return ((static_cast<uint64_t>(tag) << 48) | item_offset);
 }
@@ -221,6 +227,7 @@ size_t LTable<StaticConfig>::get_empty_or_oldest(Bucket* bucket,
           (Specialization::get_tail(pool_) - get_item_offset(item_vec)) &
           Specialization::get_mask(pool_);
       */
+      Pool* pool_ = pools_[get_item_tenant_id(item_vec)];
       uint64_t pool_tail = Specialization::get_tail(pool_);
       uint64_t item_offset = get_item_offset(item_vec);
       uint64_t pool_size = Specialization::get_size(pool_);
@@ -258,6 +265,7 @@ size_t LTable<StaticConfig>::find_item_index(
       /*
       Add is_valid() for item or offset availability.
       */
+      Pool* pool_ = pools_[get_item_tenant_id(item_vec)];
       if (!Specialization::is_valid(pool_, item_wrap_number, item_offset)) 
         continue;
 
@@ -384,7 +392,7 @@ void LTable<StaticConfig>::cleanup_bucket(uint64_t old_tail,
          * @Author: Huijuan Xiao
          * @Description:  update the function call to be the same as the parameter type of other function calls
          */
-       
+        Pool* pool_ = pools_[get_item_tenant_id(*item_vec_p)];
         if(!Specialization::is_valid(pool_, item_wrap_number, item_offset)){
           *item_vec_p = 0;
           stat_inc(&Stats::cleanup);

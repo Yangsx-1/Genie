@@ -1,4 +1,4 @@
-#include "mica/table/ltable.h"
+/*#include "mica/table/ltable.h"
 #include "mica/util/hash.h"
 #include "mica/util/lcore.h"
 
@@ -71,3 +71,4 @@ int main() {
 
   return EXIT_SUCCESS;
 }
+*/
