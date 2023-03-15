@@ -3,6 +3,8 @@
 #define MICA_POOL_CIRCULAR_LOG_IMPL_H_
 #ifndef EREW
 #define EREW
+#include "mica/util/lcore.h"
+
 namespace mica {
 namespace pool {
 template <class StaticConfig>
@@ -391,6 +393,7 @@ uint64_t CircularLog<StaticConfig>::eaet(){
   }
   return size;
 }
+
 template <class StaticConfig>
 bool CircularLog<StaticConfig>::resize_log(){
   if (concurrent_access_mode_ != 0){
@@ -515,10 +518,11 @@ void CircularLog<StaticConfig>::update_log_size(){
     fprintf(stderr, "error: concurrent_access_mode_ != 0\n");
     assert(false);
   }
-  printf("log size now = %zu.\n",size_);
+  size_t lcore_id = ::mica::util::lcore.lcore_id();
+  printf("lcore%u old log size = %zu.\n",lcore_id, size_);
   size_ = new_log_size_;
   new_log_size_ = 0;
-  printf("log size now = %zu.\n",size_);
+  printf("lcore%u new log size = %zu.\n",lcore_id, size_);
 }
 
 template <class StaticConfig>
@@ -542,7 +546,7 @@ void CircularLog<StaticConfig>::update_log_parameter(){
     static_cast<uint64_t>(
         static_cast<double>(size_) * ma_thres);
 
-    printf("update_log_parameter finished.\n");
+    //printf("update_log_parameter finished.\n");
 }
 }
 }

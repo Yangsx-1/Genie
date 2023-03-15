@@ -68,6 +68,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
   uint32_t new_item_size = static_cast<uint32_t>(
       sizeof(Item) + ::mica::util::roundup<8>(key_length) +
       ::mica::util::roundup<8>(value_length));
+  //printf("key size=%d\tvalue size=%d\n", key_length, value_length);
   uint64_t item_offset = 0;
   uint8_t item_wrap_number = 0;
 

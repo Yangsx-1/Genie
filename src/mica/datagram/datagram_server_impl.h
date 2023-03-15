@@ -635,7 +635,7 @@ uint32_t DatagramServer<StaticConfig>::RequestAccessor::get_opaque(
 template <class StaticConfig>
 void DatagramServer<StaticConfig>::RequestAccessor::retire(size_t index) {
   assert(index == next_index_to_retire_);
-  uint8_t tenant_id = static_cast<uint8_t>((unsigned char)(*this->get_key(index)) >> ::mica::table::BasicLTableConfig::kNeedMove);
+  uint8_t tenant_id = static_cast<uint8_t>(this->get_key(index)[7]);
   if (StaticConfig::kVerbose)
     printf("lcore %2zu: retire: %zu\n", ::mica::util::lcore.lcore_id(), index);
 
