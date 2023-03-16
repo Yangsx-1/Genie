@@ -1,7 +1,7 @@
 #pragma once
 #ifndef MICA_TABLE_LTABLE_IMPL_MOVE_TO_HEAD_H_
 #define MICA_TABLE_LTABLE_IMPL_MOVE_TO_HEAD_H_
-
+#include "mica/util/lcore.h"
 namespace mica {
 namespace table {
 template <class StaticConfig>
@@ -86,7 +86,7 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
        * @Description: Two new variables are added to ensure that 
        * the speed of bucket cleanup is consistent with mica.
        */
-      cleanup_bucket(new_item_offset_for_cleanup, new_tail_for_cleanup);
+      //cleanup_bucket(new_item_offset_for_cleanup, new_tail_for_cleanup);
     } else {
       pool_->unlock();
       unlock_bucket(bucket);

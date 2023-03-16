@@ -17,7 +17,9 @@ enum class Result {
   kNotSupported,
   kTimedOut,
   kRejected,
-
+  //add new result
+  kReloadSuccess,
+  kReloadFail,
   kGetSuccess,
   kGetNotFound,
 };

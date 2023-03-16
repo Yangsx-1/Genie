@@ -77,6 +77,7 @@ class DatagramServer {
   Processor* processor_;
   Network* network_;
   DirectoryClient* dir_client_;
+  size_t kTenantCount;
 
   typedef ::mica::processor::Operation Operation;
   typedef ::mica::table::Result Result;
@@ -106,6 +107,8 @@ class DatagramServer {
 
     uint64_t last_operations_done;
     uint64_t last_operations_succeeded;
+    TenantStats() : get_done(0), get_succeeded(0), operations_done(0), operations_succeeded(0),
+                    last_get_done(0), last_get_succeeded(0), last_operations_done(0), last_operations_succeeded(0) {};
   };//__attribute__((aligned(128)));
 
   struct WorkerStats {
@@ -122,8 +125,8 @@ class DatagramServer {
     uint64_t last_get_done;
     uint64_t last_get_succeeded;
 
-    TenantStats tenant_stats_[::mica::table::BasicLTableConfig::kTenantCount];
-  }__attribute__((aligned(256)));
+    TenantStats* tenant_stats_;
+  };//__attribute__((aligned(256)));
 
   struct EndpointStats {
     uint64_t last_rx_bursts;
@@ -143,6 +146,8 @@ class DatagramServer {
   // Main worker.
   static int worker_proc_wrapper(void* arg);
   void worker_proc(uint16_t lcore_id);
+  static int clean_up_worker_proc_wrapper(void* arg);
+  void clean_up_worker(uint16_t lcore_id);
 
   // TX packet handling.
   void check_pending_tx_full(RXTXState& tx_state);
@@ -244,6 +249,7 @@ class DatagramServer {
 
   std::string server_info_;
   std::thread directory_thread_;
+  std::thread clean_up_thread_;
   volatile bool stopping_;
 
   // Padding to separate static and dynamic fields.

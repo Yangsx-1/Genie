@@ -8,6 +8,7 @@
 #include "mica/util/roundup.h"
 #include "mica/util/safe_cast.h"
 #include "mica/alloc/hugetlbfs_shm.h"
+#include "mica/eaet/eaet.h"
 
 // Configuration file entries for CircularLog:
 //
@@ -46,7 +47,7 @@ class CircularLog : public PoolInterface {
 
   typedef uint64_t Offset;
   typedef uint8_t WrapAround;
-  static constexpr size_t kOffsetWidth = 40;//xhj
+  static constexpr size_t kOffsetWidth = 32;//xhj
   static constexpr Offset kInsufficientSpace =
       std::numeric_limits<Offset>::max();
   static constexpr WrapAround kMaxWrapAroundNumber = 
@@ -55,9 +56,10 @@ class CircularLog : public PoolInterface {
  * @Author: Huijuan Xiao
  * @Description:  TODO:add api to calculate the memory size of the log and to modify the corresponding variables.
  */
+
   uint64_t eaet();//calculate the mrc
-  bool resize_log();//update parameters
-  
+  void resize_log();//update parameters  
+  uint64_t compute_new_log_size(double diff_time);
 
   void lock();
   void unlock();
@@ -98,15 +100,19 @@ class CircularLog : public PoolInterface {
 
   void update_log_parameter();
   void update_log_size();
+  uint32_t get_poolstruct_item_size();
+
+  ::mica::eaet::rthRec* rth;
 
  private:
+
   //void check_invariants() const;
 
   void pop_head();
   uint64_t push_tail(uint64_t item_size);
 
   static constexpr size_t kMinimumSize = 2 * 1048576;//2MB
-  static constexpr size_t kAdjustMinimumSize = 32 * 1048576;//32MB
+  static constexpr size_t kAdjustMinimumSize = 2 * 1048576;//32MB
   static constexpr size_t kWrapAroundSize = 2 * 1048576;//2MB 
   static constexpr size_t kOffsetMask = (size_t(1) << kOffsetWidth) - 1;
   double mth_thres = 0.5;// threshold for appro-lru
@@ -138,10 +144,18 @@ class CircularLog : public PoolInterface {
   */
   uint8_t log_resize_flag;//8 bit to flag the log size calculation and memory adjustment
   uint64_t size_;  // a power of two
+  uint64_t init_size;
   uint64_t new_log_size_;
   uint64_t mth_thres_;
   uint64_t ma_thres_;
   size_t entry_id_;
+
+  double wait_interval;
+  double next_adjust_time;
+  uint64_t last_eaet_size;
+  struct timeval firsttime, secondtime;
+  bool IfComputed;
+  double log_adjust_interval;
 
   // internally, pool uses full 64-bit numbers for head and tail
   // however, the valid range for item_offset is limited to

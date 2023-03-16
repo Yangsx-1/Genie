@@ -1,6 +1,7 @@
 #include "mica/datagram/datagram_server.h"
 #include "mica/util/lcore.h"
-
+#include "mica/pool/circular_log_impl.h"
+#include <sys/time.h>
 struct DPDKConfig : public ::mica::network::BasicDPDKConfig {
   static constexpr bool kVerbose = true;
 };
@@ -19,7 +20,13 @@ struct DatagramServerConfig
 
 typedef ::mica::datagram::DatagramServer<DatagramServerConfig> Server;
 
-int main() {
+int main(int argc, const char* argv[]) {
+  if(argc != 2){
+    printf("%s NEED TARGET HIT RATIO\n", argv[0]);
+    return EXIT_FAILURE;
+  }
+  ::mica::pool::target_hit_ratio = atof(argv[1]);
+  
   ::mica::util::lcore.pin_thread(0);
 
   auto config = ::mica::util::Config::load_file("server.json");

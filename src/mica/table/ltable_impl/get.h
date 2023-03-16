@@ -1,7 +1,7 @@
 #pragma once
 #ifndef MICA_TABLE_LTABLE_IMPL_GET_H_
 #define MICA_TABLE_LTABLE_IMPL_GET_H_
-
+#include "mica/eaet/eaet.h"
 namespace mica {
 namespace table {
 template <class StaticConfig>
@@ -11,13 +11,13 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
                                  size_t* out_value_length,
                                  bool allow_mutation) const {
   assert(key_length <= kMaxKeyLength);
-
   uint32_t bucket_index = calc_bucket_index(key_hash);
   uint16_t tag = calc_tag(key_hash);
+
   const Bucket* bucket = buckets_ + bucket_index;
-
   bool partial_value;
-
+  size_t item_size = 0;
+  Pool* operation_pool = nullptr;
   while (true) {
     uint32_t version_start = read_version_begin(bucket);
 
@@ -34,6 +34,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     uint64_t item_offset = get_item_offset(item_vec);
     uint8_t item_wrap_number = get_item_wrap_around_number(item_vec);
     Pool* pool_ = pools_[get_item_tenant_id(item_vec)];
+    operation_pool = pool_;
     // we may read garbage data, but all operations relying on them are safe
     // here
     /*
@@ -83,6 +84,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     // if (key_length > kMaxKeyLength) continue;
 
     size_t value_length = get_value_length(kv_length_vec);
+    item_size = key_length + value_length + basic_struct_size;
     bool invalid_value_length = false;
 
     if (value_length <= kMaxValueLength) {
@@ -137,10 +139,15 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     break;
   }
 
-  if (partial_value)
+  if (partial_value){
+    //printf("kpartialvalue!\n");
     return Result::kPartialValue;
-  else
+  }
+  else{
+    setStatistics(operation_pool->rth, key_hash, item_size, true);
     return Result::kGetSuccess;
+  }
+  
 }
 }
 }

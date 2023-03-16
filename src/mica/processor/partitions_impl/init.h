@@ -26,6 +26,7 @@ Partitions<StaticConfig>::Partitions(const ::mica::util::Config& config,
 
   total_size_ = config.get("total_size").get_uint64();
   total_item_count_ = config.get("total_item_count").get_uint64();
+  kTenantCount = config.get("tenant_count").get_uint64();
 
   extra_collision_avoidance_ =
       config.get("extra_collision_avoidance").get_double(-1.);
@@ -98,6 +99,7 @@ void Partitions<StaticConfig>::initialize() {
     table_config.insert_bool("concurrent_write", concurrent_write_);
     table_config.insert_uint64("numa_node",
                                ::mica::util::lcore.numa_id(current_lcore_id));
+    table_config.insert_uint64("tenant_count", kTenantCount);
     //table_config.insert_double("mth_threshold", mth_threshold_);
 
     owner_lcore_ids_[i] = current_lcore_id;

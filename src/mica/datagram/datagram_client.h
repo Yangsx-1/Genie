@@ -3,7 +3,7 @@
 #define MICA_DATAGRAM_DATAGRAM_CLIENT_H_
 
 /* macro for preload*/
-#define PRELOAD
+//#define PRELOAD
 
 #include "mica/common.h"
 // #include <unordered_set>

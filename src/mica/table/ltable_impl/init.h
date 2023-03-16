@@ -7,7 +7,7 @@ namespace table {
 template <class StaticConfig>
 LTable<StaticConfig>::LTable(const ::mica::util::Config& config, Alloc* alloc,
                              uint64_t table_pool_size)
-    : config_(config), alloc_(alloc), pool_size_(table_pool_size / kTenantCount) {
+    : config_(config), alloc_(alloc) {
   bool concurrent_read = config.get("concurrent_read").get_bool();
   bool concurrent_write = config.get("concurrent_write").get_bool();
   /*
@@ -19,6 +19,10 @@ LTable<StaticConfig>::LTable(const ::mica::util::Config& config, Alloc* alloc,
 
   size_t numa_node = config.get("numa_node").get_uint64();
   //double mth_threshold = config.get("mth_threshold").get_double(0.5);
+  kTenantCount = config.get("tenant_count").get_uint64();
+  assert(kTenantCount <= ::mica::table::BasicLTableConfig::kMaxTenantCount);
+  pools_ = new Pool*[kTenantCount];
+  pool_size_ = table_pool_size / kTenantCount;
 
   for(uint8_t i = 0; i < kTenantCount; i++){
     auto log_config = ::mica::util::Config::empty_dict(
@@ -144,6 +148,7 @@ LTable<StaticConfig>::~LTable() {
   for (uint8_t i = 0; i < kTenantCount; i++) {
     delete pools_[i];
   }
+  delete pools_;
 }
 
 template <class StaticConfig>

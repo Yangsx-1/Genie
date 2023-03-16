@@ -1,7 +1,7 @@
 #pragma once
 #ifndef MICA_DATAGRAM_DATAGRAM_SERVER_IMPL_H_
 #define MICA_DATAGRAM_DATAGRAM_SERVER_IMPL_H_
-
+#include "mica/eaet/eaet_impl.h"
 namespace mica {
 namespace datagram {
 template <class StaticConfig>
@@ -27,7 +27,8 @@ DatagramServer<StaticConfig>::DatagramServer(const ::mica::util::Config& config,
       config.get("rebalance_interval").get_uint64(0));
 
   flush_status_report_ = config.get("flush_status_report").get_bool(true);
-
+  kTenantCount = processor_->get_tenant_count();
+  assert(kTenantCount <= ::mica::table::BasicLTableConfig::kMaxTenantCount);
   generate_server_info();
 
   stopwatch_.init_end();
@@ -137,6 +138,8 @@ void DatagramServer<StaticConfig>::run() {
     if (!rte_lcore_is_enabled(static_cast<uint8_t>(lcore_id))) continue;
     rte_eal_remote_launch(worker_proc_wrapper, &args[lcore_id], lcore_id);
   }
+  clean_up_thread_ = std::thread(clean_up_worker_proc_wrapper, this);
+  clean_up_thread_.detach();
   worker_proc_wrapper(&args[0]);
 
   rte_eal_mp_wait_lcore();
@@ -253,6 +256,32 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
 }
 
 template <class StaticConfig>
+int DatagramServer<StaticConfig>::clean_up_worker_proc_wrapper(void* arg) {
+  /*auto v =
+      reinterpret_cast<std::pair<DatagramServer<StaticConfig>*, uint16_t>*>(
+          arg);
+  v->first->clean_up_worker(v->second);*/
+  auto server = reinterpret_cast<DatagramServer<StaticConfig>*>(arg);
+  server->clean_up_worker(0);
+  return 0;
+}
+
+template <class StaticConfig>
+void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id){
+  ::mica::util::lcore.pin_thread(lcore_id);
+  printf("clean up worker running on lcore %" PRIu16 "\n", lcore_id);
+  uint16_t local_id = ::mica::util::lcore.lcore_id();
+  printf("clean up worker real core is %d\n", local_id);
+  uint16_t partiton_count = processor_->get_partition_count();
+  size_t tenant_count = kTenantCount;
+
+  
+
+  printf("clean up worker now do nothing!\n");
+  return;
+}
+
+template <class StaticConfig>
 void DatagramServer<StaticConfig>::check_pending_tx_full(
     RXTXState& rx_tx_state) {
   if (rx_tx_state.pending_tx.count != StaticConfig::kTXBurst) return;
@@ -303,10 +332,13 @@ void DatagramServer<StaticConfig>::release_pending_tx(RXTXState& rx_tx_state) {
 
 template <class StaticConfig>
 void DatagramServer<StaticConfig>::reset_status() {
-  worker_stats_.resize(0);
-  worker_stats_.resize(::mica::util::lcore.lcore_count(), {0, 0, 0, 0, 0});
+  //worker_stats_.resize(0);
+  worker_stats_.resize(::mica::util::lcore.lcore_count());
+  for(size_t i = 0; i < worker_stats_.size(); ++i){
+    worker_stats_[i].tenant_stats_ = new TenantStats[kTenantCount];
+  }
 
-  endpoint_stats_.resize(0);
+  //endpoint_stats_.resize(0);
   endpoint_stats_.resize(Network::kMaxEndpointCount, {0, 0, 0, 0, 0});
 
   auto eids = network_->get_endpoints();
@@ -444,8 +476,7 @@ void DatagramServer<StaticConfig>::reset_tenant_status() {
 
 template <class StaticConfig>
 void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
-  /**/
-  size_t tenantCount = ::mica::table::BasicLTableConfig::kTenantCount;
+  size_t tenantCount = kTenantCount;
 
   for(size_t tenant_id = 0; tenant_id < tenantCount; tenant_id++){
     
@@ -481,19 +512,22 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
       }
     }
 
-    double get_success_rate =
+    double hit_rate =
         static_cast<double>(total_get_operations_succeeded) /
         static_cast<double>(std::max(total_get_operations_done, uint64_t(1)));
 
     double success_rate =
         static_cast<double>(total_operations_succeeded) /
         static_cast<double>(std::max(total_operations_done, uint64_t(1)));
+    
+    ::mica::pool::hit_rate_diff[tenant_id] = hit_rate - ::mica::pool::last_hit_rate[tenant_id];
+    ::mica::pool::last_hit_rate[tenant_id] = hit_rate;
 
     printf("tenant_id=%lu", tenant_id);
     printf(", tput=%7.3lf Mops",
          static_cast<double>(total_operations_done) / time_diff / 1000000.);
     printf(", success_rate=%6.2lf%%", success_rate * 100.);
-    printf(", hit_rate=%6.2lf%%", get_success_rate * 100.);
+    printf(", hit_rate=%6.2lf%%", hit_rate * 100.);
     printf("\n");
   }
 

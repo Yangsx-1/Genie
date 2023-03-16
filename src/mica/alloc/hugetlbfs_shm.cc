@@ -1004,7 +1004,7 @@ void HugeTLBFS_SHM::free_striped(void* ptr) {
     /*
     Try to adjust the memory of the specific entry
     */
-    printf("memory_adjustment() start.\n");
+    //printf("memory_adjustment() start.\n");
     lock();
     if(entries_[entry_id].page_ids.empty()){
       unlock();

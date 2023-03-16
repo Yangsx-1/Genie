@@ -2,13 +2,13 @@
 #ifndef MICA_TABLE_LTABLE_H_
 #define MICA_TABLE_LTABLE_H_
 
-#include <cstdio>
 #include "mica/table/table.h"
 #include "mica/pool/circular_log.h"
 #include "mica/pool/segregated_fit.h"
 #include "mica/util/config.h"
 #include "mica/util/memcpy.h"
 #include "mica/table/ltable_impl/specialization.h"
+#include "mica/eaet/eaet_impl.h"
 
 // Configuration file entries for LTable:
 //
@@ -41,9 +41,7 @@ struct BasicLTableConfig {
   static constexpr bool kCollectStats = false;
 
   //The maximum number of tenants to support.
-  static constexpr size_t kMaxTenantCount = 255;
-  static constexpr size_t kTenantCount = 8;//need to be 2 ^ x
-  static constexpr size_t kNeedMove = 5;//need to be 2 ^ x
+  static constexpr size_t kMaxTenantCount = 16;
 };
 
 struct BasicLossyLTableConfig : public BasicLTableConfig {
@@ -88,8 +86,7 @@ class LTable : public TableInterface {
   static constexpr size_t kMaxKeyLength = 255;
   static constexpr size_t kMaxValueLength = 1048575;
   //The maximum number of tenants to support.
-  static constexpr size_t kMaxTenantCount = BasicLTableConfig::kMaxTenantCount;
-  static constexpr size_t kTenantCount = BasicLTableConfig::kTenantCount;
+  //static constexpr size_t kMaxTenantCount = BasicLTableConfig::kMaxTenantCount;
   // ltable_impl/init.h
   LTable(const ::mica::util::Config& config, Alloc* alloc, uint64_t table_pool_size);
   ~LTable();
@@ -104,6 +101,8 @@ class LTable : public TableInterface {
 
   // ltable_impl/set.h
   Result set(uint64_t key_hash, const char* key, size_t key_length,
+             const char* value, size_t value_length, bool overwrite);
+  Result reset_item(uint64_t key_hash, const char* key, size_t key_length,
              const char* value, size_t value_length, bool overwrite);
 
   // ltable_impl/test.h
@@ -121,6 +120,8 @@ class LTable : public TableInterface {
  private:
   typedef LTablePoolSpecialization<typename Pool::Tag> Specialization;
 
+  size_t basic_struct_size = 24;
+  
   struct Item {
     uint32_t kv_length_vec;  // key_length: 8, value_length: 24; kv_length_vec
                              // == 0: empty item
@@ -259,7 +260,8 @@ class LTable : public TableInterface {
 
   ::mica::util::Config config_;
   Alloc* alloc_;
-  Pool* pools_[kTenantCount];
+  size_t kTenantCount;
+  Pool** pools_;
 
   Bucket* buckets_;
   Bucket* extra_buckets_;  // = (buckets + num_buckets); extra_buckets[0] is

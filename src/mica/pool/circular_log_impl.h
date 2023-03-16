@@ -3,10 +3,17 @@
 #define MICA_POOL_CIRCULAR_LOG_IMPL_H_
 #ifndef EREW
 #define EREW
+#include "mica/eaet/eaet_impl.h"
 #include "mica/util/lcore.h"
+#include<sys/time.h>
 
 namespace mica {
 namespace pool {
+double target_hit_ratio = 0;
+const size_t kMaxTenantCount = 16;
+double hit_rate_diff[kMaxTenantCount] = {0};
+double last_hit_rate[kMaxTenantCount] = {0};
+
 template <class StaticConfig>
 CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
                                        Alloc* alloc, uint8_t tenant_id)
@@ -24,8 +31,8 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
 
   if (size < kMinimumSize) size = kMinimumSize;//2MB
 
-  //size = Alloc::roundup(size);
-  //size = ::mica::util::next_power_of_two(size);
+  size = Alloc::roundup(size);
+  size = ::mica::util::next_power_of_two(size);
   assert(size <= (kOffsetMask >>
                   1));  // ">> 1" is for sufficient garbage collection time  
 
@@ -39,16 +46,24 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
     concurrent_access_mode_ = 2;//cocurrent read and cocurrent write
 
   assert(concurrent_access_mode_ == 0);
-  uint64_t initsize = size;
-  uint64_t msize = 1024 * 1024;
-  size_ = size;
+  init_size = size;
+  size_ = size / 2;
+  printf("init size=%lu\n", size_);
   mask_ = size - 1;
 
   lock_ = 0;
   head_ = tail_ = 0;
-  new_log_size_ = 0;
+  new_log_size_ = size_;
   tail_for_cleanup = 0;
   wrap_around_number_ = 0;
+
+  wait_interval = 5;
+  log_adjust_interval = 3;
+  next_adjust_time = log_adjust_interval + wait_interval;
+  gettimeofday(&firsttime, NULL);
+  IfComputed = false;
+  rth = new ::mica::eaet::rthRec();
+
   /*
   memory_adjustment_flag_ = 0;
   log_size_calculation_flag_ = 0;
@@ -82,7 +97,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
       return;
     }
     //if (!alloc_->map(alloc_id, data_, 0, size_ + kWrapAroundSize)) {
-    if (!alloc_->map(alloc_id, data_, 0, size_)) {
+    if (!alloc_->map(alloc_id, data_, 0, init_size)) {
       alloc_->unmap(data_);
       // TODO: Give up after some trials.
       continue;
@@ -113,6 +128,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
 template <class StaticConfig>
 CircularLog<StaticConfig>::~CircularLog() {
   if (!alloc_->unmap(data_)) assert(false);
+  delete rth;
   //if (!alloc_->unmap(data_ + size_)) assert(false);
 }
 
@@ -121,6 +137,11 @@ typename CircularLog<StaticConfig>::Offset CircularLog<StaticConfig>::allocate(
     size_t item_size) {
   assert(item_size <= std::numeric_limits<uint32_t>::max());
   return push_tail(item_size + sizeof(Item));
+}
+
+template <class StaticConfig>
+uint32_t CircularLog<StaticConfig>::get_poolstruct_item_size(){
+  return sizeof(Item);
 }
 
 template <class StaticConfig>
@@ -149,7 +170,7 @@ bool CircularLog<StaticConfig>::is_valid(WrapAround item_wrap_number, Offset off
   */
   if (concurrent_access_mode_ == 0){
     if(wrap_around_number_ == item_wrap_number){
-      return (offset < tail_);
+      return true;
     }
     else if(wrap_around_number_ - item_wrap_number == 1){
       return ((offset > tail_) && (offset < (size_ - kWrapAroundSize)));
@@ -382,19 +403,149 @@ uint64_t CircularLog<StaticConfig>::eaet(){
   //return 1024 * 1024 * 1024;//1GiB
   //return 2048 * 1024 * 1024;//2GiB
   uint64_t size = 0;
+  uint64_t msize = 1024 * 1024;
   if(wrap_around_number_ == 0){
-    size = 512 * 1024 *1024;
+    size = 512 * msize;//512MiB
   }
   else if(wrap_around_number_ == 1){
-    size = 2048 * 1024 *1024;
+    size = 2048 * msize;//2GiB
   }
   else{
-    size = 1024 * 1024 *1024;
+    size = 2 * msize;//1GiB
   }
   return size;
 }
 
 template <class StaticConfig>
+uint64_t CircularLog<StaticConfig>::compute_new_log_size(double diff_time){
+  double upper_error = 0.03;
+  double target_diff = target_hit_ratio - last_hit_rate[tenant_id_];
+  size_t local_id = ::mica::util::lcore.lcore_id();
+  uint64_t eaet_log_size = 0;
+  uint64_t msize = 1024 * 1024;
+  if(!IfComputed){//第一次调整使用eaet,时间到了只算一次
+    if(target_diff < -upper_error || target_diff > 0){//误差较大或没达到命中率
+      uint64_t granularity_size = 2 * msize; //2M
+      uint64_t max_memory = init_size;//4G
+      rthCalcMRC(rth, max_memory, granularity_size);
+      uint64_t tmpsize = getsize(rth, max_memory, granularity_size, target_hit_ratio);//EAET size
+      uint64_t bias1 = compute_bias(rth, tmpsize, target_hit_ratio, tenant_id_);//first bias
+      uint64_t bias2 = compute_bias_with_theta(rth, tmpsize + bias1, target_hit_ratio, tenant_id_);//second bias
+      eaet_log_size = tmpsize + bias2;// eaet + second bias
+      printf("lcore%ld tenant%d using EAET log size:%lu\n", local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(eaet_log_size));
+    }else{//误差小不需要调
+      eaet_log_size = get_size();
+      printf("lcore%ld tenant%d workload not shift! maintaining old size!\n", local_id, tenant_id_);
+    }
+    IfComputed = true;
+    last_eaet_size = ::mica::util::roundup<2 * 1048576>(eaet_log_size);//记录eaet计算出来的size
+  }
+  else{//微调
+    uint64_t new_old_diff = last_eaet_size > get_size() ? last_eaet_size - get_size() : get_size() - last_eaet_size;
+    if(new_old_diff > 32 * msize){//size没调整到
+      return last_eaet_size;
+    }else{
+      if(fabs(hit_rate_diff[tenant_id_]) < 0.0003 && diff_time > next_adjust_time){//命中率稳定后调整
+        if(target_diff > upper_error || target_diff < -upper_error){//>upper_error or <-upper_error
+          eaet_log_size = get_size() * (1 + target_diff * 2);
+        }else if(target_diff > 0){//0~upper_error
+          eaet_log_size = get_size() * (1 + upper_error);
+        }else{//-upper_error~0
+          eaet_log_size = get_size();
+          gettimeofday(&firsttime, NULL);
+          IfComputed = false;
+          printf("lcore%ld tenant%d finish adjustment!\n", local_id, tenant_id_);
+          next_adjust_time = log_adjust_interval + wait_interval;//重置
+        }
+        next_adjust_time = diff_time + wait_interval;
+        printf("lcore%ld tenant%d second adjustment for log size!\n", local_id, tenant_id_);
+      }else{//命中率不稳定
+        eaet_log_size = get_size();
+        //printf("lcore%ld Hit rate not stable! Using old log size!\n", local_id);
+      }
+      last_eaet_size = ::mica::util::roundup<2 * 1048576>(eaet_log_size);
+    }
+  }
+  if(eaet_log_size > init_size){
+    //printf("here is the max initsize!\n");
+    eaet_log_size = init_size;
+  }
+  
+  //printf("lcore%ld complete compute rth:log_size=%ld\tn=%ld\n", local_id, eaet_log_size, rth->n);
+  if(eaet_log_size < kAdjustMinimumSize) {
+    eaet_log_size = kAdjustMinimumSize;
+  }
+  
+  eaet_log_size = ::mica::util::roundup<2 * 1048576>(eaet_log_size);
+
+  return eaet_log_size;
+}
+
+template <class StaticConfig>
+void CircularLog<StaticConfig>::resize_log(){
+  if (concurrent_access_mode_ != 0){
+    fprintf(stderr, "error: concurrent_access_mode_ != 0\n");
+    assert(false);
+  }
+  //size_t local_id = ::mica::util::lcore.lcore_id();
+  gettimeofday(&secondtime, NULL);
+  double diff_time = (secondtime.tv_sec - firsttime.tv_sec) / 60.0;
+  
+  if(diff_time > log_adjust_interval){//到了需要调整的时间
+    new_log_size_ = compute_new_log_size(diff_time);
+    //log_resize_flag = 1;
+    if(new_log_size_ == size_){
+      if(size_ - tail_ < kMinimumSize){//这一轮的数据已经写到最后一个page上了
+        //printf("now time is %lf\n", diff_time);
+        update_log_parameter();
+      }
+    }else if(new_log_size_ > size_){
+      if(!alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_)){
+        printf("size: %zu\n", new_log_size_);
+        fprintf(stderr, "error: failed to adjustment log memory\n");
+        assert(false);
+      }
+      update_log_size();
+    }else{//new_log_size_ < size_
+      if(tail_ <= new_log_size_){
+        if(new_log_size_ - tail_ < kMinimumSize){//tail写到new log size再调
+          if(!alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_)){
+            fprintf(stderr, "error: failed to adjustment log memory\n");
+            assert(false);
+          }
+          update_log_size();
+          update_log_parameter();
+        }
+      }else{//tail > new log size
+        new_log_size_ = ::mica::util::roundup<2 * 1048576>(tail_);
+        if(!alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_)){
+          fprintf(stderr, "error: failed to adjustment log memory\n");
+          assert(false);
+        } 
+        update_log_size();
+        update_log_parameter();
+      }
+    }
+  }else{//没到需要调整的时间，不需要更改log size，只需要判断并更新参数
+    if(size_ > tail_){
+      if(size_ - tail_ < kMinimumSize){//这一轮的数据已经写到最后一个page上了
+        printf("lcore%lu tenant%u now time is %lf\n", ::mica::util::lcore.lcore_id(), tenant_id_, diff_time);
+        update_log_parameter();
+      }
+    }
+    else{//size_ =< tail_
+      printf("tail=%zu,log size=%zu, log_resize_flag_=%d\n",tail_,size_,log_resize_flag);
+      fprintf(stderr, "error: illegal tail of the log.\n");
+      //assert(!log_size_calculation_flag_);
+      //assert(!memory_adjustment_flag_);
+      assert(!(log_resize_flag >> 4));
+      assert(!(log_resize_flag & 1));
+      assert(false);
+    }
+  }
+}
+
+/*template <class StaticConfig>
 bool CircularLog<StaticConfig>::resize_log(){
   if (concurrent_access_mode_ != 0){
     fprintf(stderr, "error: concurrent_access_mode_ != 0\n");
@@ -511,18 +662,18 @@ bool CircularLog<StaticConfig>::resize_log(){
   }
   return true;
 }
-
+*/
 template <class StaticConfig>
 void CircularLog<StaticConfig>::update_log_size(){
   if (concurrent_access_mode_ != 0){
     fprintf(stderr, "error: concurrent_access_mode_ != 0\n");
     assert(false);
   }
-  size_t lcore_id = ::mica::util::lcore.lcore_id();
-  printf("lcore%u old log size = %zu.\n",lcore_id, size_);
+  size_t local_id = ::mica::util::lcore.lcore_id();
+  printf("lcore%ld tenant%u log size old = %zu.\n", local_id, tenant_id_, size_);
   size_ = new_log_size_;
-  new_log_size_ = 0;
-  printf("lcore%u new log size = %zu.\n",lcore_id, size_);
+  //new_log_size_ = 0;
+  printf("lcore%ld tenant%u log size now = %zu.\n", local_id, tenant_id_, size_);
 }
 
 template <class StaticConfig>
@@ -531,6 +682,7 @@ void CircularLog<StaticConfig>::update_log_parameter(){
     fprintf(stderr, "error: concurrent_access_mode_ != 0\n");
     assert(false);
   }
+  
     tail_ = 0;
     /*
     memory_adjustment_flag_ = 0;

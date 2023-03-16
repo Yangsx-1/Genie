@@ -177,6 +177,16 @@ uint16_t Partitions<StaticConfig>::get_partition_id(uint64_t key_hash) const {
 }
 
 template <class StaticConfig>
+uint16_t Partitions<StaticConfig>::get_partition_count() const {
+  return partition_count_;
+}
+
+template <class StaticConfig>
+size_t Partitions<StaticConfig>::get_tenant_count() const {
+  return kTenantCount;
+}
+
+template <class StaticConfig>
 void Partitions<StaticConfig>::reset_load_stats() {
   for (size_t lcore_id = 0; lcore_id < StaticConfig::kMaxLCoreCount;
        lcore_id++) {

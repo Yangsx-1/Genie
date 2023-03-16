@@ -112,6 +112,8 @@ class Partitions : public ProcessorInterface<typename StaticConfig::Table> {
   void rebalance_load();
 
   uint16_t get_partition_id(uint64_t key_hash) const;
+  uint16_t get_partition_count() const;
+  size_t get_tenant_count() const;
 
   void reset_load_stats();
   uint32_t get_request_count(uint16_t lcore_id, uint16_t index) const;
@@ -137,6 +139,7 @@ class Partitions : public ProcessorInterface<typename StaticConfig::Table> {
   size_t total_size_;
   size_t total_item_count_;
   double extra_collision_avoidance_;
+  size_t kTenantCount;
   //double mth_threshold_;
   std::vector<uint16_t> lcores_;
 
