@@ -79,7 +79,7 @@ uint64_t LTablePoolSpecialization<::mica::pool::CircularLogTag>::get_mth_thres(
   return pool->get_mth_thres();
 }
 */
-template <class PoolTag>
+/*template <class PoolTag>
 template <class Pool>
 bool LTablePoolSpecialization<PoolTag>::is_valid(const Pool* pool, typename Pool::WrapAround item_wrap_number,
                                                  typename Pool::Offset offset) {
@@ -87,7 +87,7 @@ bool LTablePoolSpecialization<PoolTag>::is_valid(const Pool* pool, typename Pool
   (void)item_wrap_number;
   (void)offset;
   return true;
-}
+}*/
 
 template <>
 template <class Pool>
@@ -95,6 +95,7 @@ bool LTablePoolSpecialization<::mica::pool::CircularLogTag>::is_valid(
     const Pool* pool, typename Pool::WrapAround item_wrap_number, typename Pool::Offset offset) {
   return pool->is_valid(item_wrap_number, offset);
 }
+
 }
 }
 

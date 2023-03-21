@@ -107,8 +107,15 @@ class DatagramServer {
 
     uint64_t last_operations_done;
     uint64_t last_operations_succeeded;
+    
+    uint64_t total_key_length;
+    uint64_t total_value_length;
+
+    uint64_t last_key_length;
+    uint64_t last_value_length;
     TenantStats() : get_done(0), get_succeeded(0), operations_done(0), operations_succeeded(0),
-                    last_get_done(0), last_get_succeeded(0), last_operations_done(0), last_operations_succeeded(0) {};
+                    last_get_done(0), last_get_succeeded(0), last_operations_done(0), last_operations_succeeded(0),
+                    total_key_length(0), total_value_length(0), last_key_length(0), last_value_length(0) {};
   };//__attribute__((aligned(128)));
 
   struct WorkerStats {
@@ -136,7 +143,13 @@ class DatagramServer {
     uint64_t last_tx_dropped;
   };
 
-
+  struct tenant_info{
+    double get_ratio;
+    double key_size;
+    double value_size;
+    double tput;
+    double theta;
+  };
 
   // Directory service support.
   void generate_server_info();
@@ -148,7 +161,7 @@ class DatagramServer {
   void worker_proc(uint16_t lcore_id);
   static int clean_up_worker_proc_wrapper(void* arg);
   void clean_up_worker(uint16_t lcore_id);
-
+  void check_available_compute();
   // TX packet handling.
   void check_pending_tx_full(RXTXState& tx_state);
   void check_pending_tx_min(RXTXState& tx_state);
@@ -256,6 +269,9 @@ class DatagramServer {
   char padding0[128];
 
   std::vector<WorkerStats> worker_stats_;
+  std::vector<tenant_info> tenants_info_;
+  std::vector<double> tenants_theta;
+  std::vector<uint64_t> tenants_theta_calculate_number;
 
   // Padding to separate two dynamic fields.
   char padding1[128];

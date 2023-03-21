@@ -12,6 +12,7 @@ float ln(float x);
 double pow_approx(double a, double b);
 uint64_t leastSquareRegression(float logX[], float logY[], uint64_t length, struct avg *avgResult, struct skew *skewResult);
 void averageLogData(float logX[], float logY[], uint64_t length, struct avg* avgResult);
+double skewEstimation(uint32_t initAccessTime[], uint64_t length);
 std::vector<uint32_t> GetMaxNumbers(std::vector<uint32_t> input, int k);
 
 struct skew{
@@ -123,7 +124,7 @@ void averageLogData(float logX[], float logY[], uint64_t length, struct avg* avg
     avgResult->avgLogY = tmpY/length;
 }   
 
-void skewEstimation(uint32_t initAccessTime[], uint64_t length){
+double skewEstimation(uint32_t initAccessTime[], uint64_t length){
 
     assert(length == 30);
 
@@ -144,10 +145,16 @@ void skewEstimation(uint32_t initAccessTime[], uint64_t length){
     printf("r2Score = %f ", skewResult.r2Score);
     printf("theta = %f\n", skewResult.theta);
     if(skewResult.r2Score < 0.6){
-        if(initAccessTime[0] - initAccessTime[length - 1] <= 30){
+        /*if(initAccessTime[0] - initAccessTime[length - 1] <= 30){
            printf("skewResult.theta = 0\n"); 
-        }
+        }*/
+        skewResult.theta = 0;
+    }else{
+        if(skewResult.theta < 0) skewResult.theta = 0;
+        else if(skewResult.theta > 0.99) skewResult.theta = 0.99; 
     }
+
+    return skewResult.theta;
 }
 
 void uptodown(std::vector<uint32_t>& heap, int k, int pos)

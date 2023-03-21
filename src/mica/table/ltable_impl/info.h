@@ -62,6 +62,33 @@ template <class StaticConfig>
 void LTable<StaticConfig>::stat_dec(size_t Stats::*counter) const {
   if (StaticConfig::kCollectStats) __sync_sub_and_fetch(&(stats_.*counter), 1);
 }
+
+/*template <class StaticConfig>
+void LTable<StaticConfig>::set_tenant_get_ratio(uint8_t tenant_id, double get_ratio){
+  tenants_stats_[tenant_id].get_ratio = get_ratio;
+}
+
+template <class StaticConfig>
+void LTable<StaticConfig>::set_tenant_key_size(uint8_t tenant_id, double key_size){
+  tenants_stats_[tenant_id].key_size = key_size;
+}
+
+template <class StaticConfig>
+void LTable<StaticConfig>::set_tenant_value_size(uint8_t tenant_id, double value_size){
+  tenants_stats_[tenant_id].value_size = value_size;
+}
+
+template <class StaticConfig>
+void LTable<StaticConfig>::set_tenant_tput(uint8_t tenant_id, double tput){
+  tenants_stats_[tenant_id].tput = tput;
+}
+
+template <class StaticConfig>
+void LTable<StaticConfig>::set_tenant_theta(uint8_t tenant_id, double theta){
+  tenants_stats_[tenant_id].theta = theta;
+}*/
+
+
 }
 }
 

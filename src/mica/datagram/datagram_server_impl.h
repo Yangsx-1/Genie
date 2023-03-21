@@ -1,7 +1,13 @@
 #pragma once
 #ifndef MICA_DATAGRAM_DATAGRAM_SERVER_IMPL_H_
 #define MICA_DATAGRAM_DATAGRAM_SERVER_IMPL_H_
-#include "mica/eaet/eaet_impl.h"
+#include "mica/eaet/eaet.h"
+#include "sys/time.h"
+
+#define BLUE         "\033[0;32;34m"
+#define RED          "\033[0;32;31m"
+#define NONE         "\033[m"
+
 namespace mica {
 namespace datagram {
 template <class StaticConfig>
@@ -267,17 +273,57 @@ int DatagramServer<StaticConfig>::clean_up_worker_proc_wrapper(void* arg) {
 }
 
 template <class StaticConfig>
+void DatagramServer<StaticConfig>::check_available_compute(){
+  size_t partition_count = processor_->get_table_count();
+  size_t tenant_count = kTenantCount;
+  for(uint16_t partition_number = 0; partition_number < partition_count; partition_number++){
+    ::mica::processor::BasicPartitionsConfig::Table* tmp_table = processor_->get_table(partition_number);
+    for(size_t tenant_id = 0; tenant_id < tenant_count; tenant_id++){
+      ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(tenant_id);
+      if(tmp_pool->eaet_need_compute == 1){//需要计算
+        double theta = 0;
+        tmp_pool->set_new_log_size(tmp_pool->compute_eaet_with_bias(partition_number, &theta));
+        tmp_pool->eaet_need_compute = 2;//计算完毕
+        printf("out theta = %lf\n", theta);
+        tenants_theta[tenant_id] += theta;
+        tenants_theta_calculate_number[tenant_id]++;
+        printf(BLUE"clean up worker help lcore%d tenant%d compute size!\n"NONE, partition_number, tenant_id);
+      }
+    }
+  }
+}
+
+template <class StaticConfig>
 void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id){
   ::mica::util::lcore.pin_thread(lcore_id);
-  printf("clean up worker running on lcore %" PRIu16 "\n", lcore_id);
-  uint16_t local_id = ::mica::util::lcore.lcore_id();
-  printf("clean up worker real core is %d\n", local_id);
-  uint16_t partiton_count = processor_->get_partition_count();
-  size_t tenant_count = kTenantCount;
+  printf(BLUE"clean up worker running on lcore %" PRIu16 "\n"NONE, lcore_id);
+  size_t partition_count = processor_->get_table_count();
+  size_t partition_id = 0;
+  size_t partition_mask = partition_count - 1;
 
+  uint64_t compute_eaet_mask = 16 - 1;
+
+  uint64_t bucket_mask = processor_->get_table(0)->get_bucket_mask();
+  uint64_t bucket_number = bucket_mask + 1;
+  uint32_t bucket_index = 0;
+  const uint32_t clean_number = 32768;
+
+  uint64_t time_count = 0;
   
-
-  printf("clean up worker now do nothing!\n");
+  while(true){
+    sleep(1);
+    time_count++;
+    if(!(time_count & compute_eaet_mask)) check_available_compute();
+    //printf(BLUE"cleaning partition %d index %d\n"NONE, partition_id, bucket_index);
+    processor_->get_table(partition_id)->cleanup_specified_bucket(bucket_index, clean_number);
+    bucket_index += clean_number;
+    if(bucket_index >= bucket_number){//清完一个table
+      bucket_index = 0;
+      partition_id = (partition_id + 1) & partition_mask;
+    }
+  }
+  
+  printf(RED"clean up worker now do nothing!\n"NONE);
   return;
 }
 
@@ -334,6 +380,9 @@ template <class StaticConfig>
 void DatagramServer<StaticConfig>::reset_status() {
   //worker_stats_.resize(0);
   worker_stats_.resize(::mica::util::lcore.lcore_count());
+  tenants_info_.resize(kTenantCount);
+  tenants_theta.resize(kTenantCount);
+  tenants_theta_calculate_number.resize(kTenantCount);
   for(size_t i = 0; i < worker_stats_.size(); ++i){
     worker_stats_[i].tenant_stats_ = new TenantStats[kTenantCount];
   }
@@ -485,6 +534,8 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     uint64_t total_operations_done = 0;
     uint64_t total_operations_succeeded = 0;
     time_diff = std::max(0.01, time_diff);
+    uint64_t total_key_length = 0;
+    uint64_t total_value_length = 0;
     for (size_t lcore_id = 0; lcore_id < ::mica::util::lcore.lcore_count(); lcore_id++) {
       {
         uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].get_done;
@@ -510,6 +561,18 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
         total_operations_succeeded += v - last_v;
         last_v = v;
       }
+      {
+        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].total_key_length;
+        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_key_length;
+        total_key_length += v - last_v;
+        last_v = v;
+      }
+      {
+        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].total_value_length;
+        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_value_length;
+        total_value_length += v - last_v;
+        last_v = v;
+      }
     }
 
     double hit_rate =
@@ -519,15 +582,38 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     double success_rate =
         static_cast<double>(total_operations_succeeded) /
         static_cast<double>(std::max(total_operations_done, uint64_t(1)));
+
+    double get_ratio = static_cast<double>(total_get_operations_done) / 
+        static_cast<double>(std::max(total_operations_done, uint64_t(1)));
+
+    double avg_key_length = static_cast<double>(total_key_length) /
+        static_cast<double>(std::max(total_operations_done, uint64_t(1)));
+
+    double avg_value_length = static_cast<double>(total_value_length) /
+        static_cast<double>(std::max(total_operations_done - total_get_operations_done, uint64_t(1)));
+
+    double tput = static_cast<double>(total_operations_done) / time_diff / 1000000.;
+
+    double theta = tenants_theta[tenant_id] / 
+        static_cast<double>(std::max(tenants_theta_calculate_number[tenant_id], uint64_t(1)));
     
     ::mica::pool::hit_rate_diff[tenant_id] = hit_rate - ::mica::pool::last_hit_rate[tenant_id];
     ::mica::pool::last_hit_rate[tenant_id] = hit_rate;
 
+    tenants_info_[tenant_id].get_ratio = get_ratio;
+    tenants_info_[tenant_id].key_size = avg_key_length;
+    tenants_info_[tenant_id].value_size = avg_value_length;
+    tenants_info_[tenant_id].tput = tput;
+    tenants_info_[tenant_id].theta = theta;
+
     printf("tenant_id=%lu", tenant_id);
-    printf(", tput=%7.3lf Mops",
-         static_cast<double>(total_operations_done) / time_diff / 1000000.);
+    printf(", tput=%7.3lf Mops", tput);
     printf(", success_rate=%6.2lf%%", success_rate * 100.);
     printf(", hit_rate=%6.2lf%%", hit_rate * 100.);
+    printf(", get_ratio=%6.2lf%%", get_ratio * 100.);
+    printf(", key_length=%6.2lf", avg_key_length);
+    printf(", value_length=%6.2lf", avg_value_length);
+    printf(", theta=%6.2lf", theta);
     printf("\n");
   }
 
@@ -696,11 +782,13 @@ void DatagramServer<StaticConfig>::RequestAccessor::retire(size_t index) {
   // Update stats.
   worker_stats_->num_operations_done++;
   worker_stats_->tenant_stats_[tenant_id].operations_done++;
+  worker_stats_->tenant_stats_[tenant_id].total_key_length += this->get_key_length(index);
+  
   Result tmp_result = pending_response_batch_.result;
   if (tmp_result == Result::kSuccess){//set success
     worker_stats_->num_operations_succeeded++;
-
     worker_stats_->tenant_stats_[tenant_id].operations_succeeded++;
+    worker_stats_->tenant_stats_[tenant_id].total_value_length += this->get_value_length(index);
   }
   else if(tmp_result == Result::kGetSuccess){//get success
     worker_stats_->num_operations_succeeded++;

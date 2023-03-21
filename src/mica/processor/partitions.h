@@ -112,7 +112,6 @@ class Partitions : public ProcessorInterface<typename StaticConfig::Table> {
   void rebalance_load();
 
   uint16_t get_partition_id(uint64_t key_hash) const;
-  uint16_t get_partition_count() const;
   size_t get_tenant_count() const;
 
   void reset_load_stats();
@@ -145,7 +144,7 @@ class Partitions : public ProcessorInterface<typename StaticConfig::Table> {
 
   uint16_t owner_lcore_ids_[StaticConfig::kMaxPartitionCount];
   Table* tables_[StaticConfig::kMaxPartitionCount];
-  Pool* pools_[StaticConfig::kMaxPartitionCount];
+  //Pool* pools_[StaticConfig::kMaxPartitionCount];
 
   struct PendingOwnerLCoreChange {
     uint16_t partition_id;

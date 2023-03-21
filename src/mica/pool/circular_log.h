@@ -9,6 +9,7 @@
 #include "mica/util/safe_cast.h"
 #include "mica/alloc/hugetlbfs_shm.h"
 #include "mica/eaet/eaet.h"
+#include <atomic>
 
 // Configuration file entries for CircularLog:
 //
@@ -60,6 +61,8 @@ class CircularLog : public PoolInterface {
   uint64_t eaet();//calculate the mrc
   void resize_log();//update parameters  
   uint64_t compute_new_log_size(double diff_time);
+  uint64_t compute_eaet_with_bias(size_t local_id, double* out_theta);
+  uint64_t fine_adjustment(double diff_time);
 
   void lock();
   void unlock();
@@ -103,6 +106,8 @@ class CircularLog : public PoolInterface {
   uint32_t get_poolstruct_item_size();
 
   ::mica::eaet::rthRec* rth;
+  volatile int eaet_need_compute;//0不需要计算//1需要计算//2计算完毕
+  bool sample_flag;//是否需要sample
 
  private:
 
@@ -137,7 +142,7 @@ class CircularLog : public PoolInterface {
 
   uint8_t lock_;
   /**/
-  uint8_t wrap_around_number_;//8 bit for wrap around number
+  volatile uint8_t wrap_around_number_;//8 bit for wrap around number
   /*
   uint8_t memory_adjustment_flag_;//8 bit for flag the memory adjustment
   uint8_t log_size_calculation_flag_;//8 bit for flag the log size calculation
@@ -150,12 +155,11 @@ class CircularLog : public PoolInterface {
   uint64_t ma_thres_;
   size_t entry_id_;
 
-  double wait_interval;
-  double next_adjust_time;
-  uint64_t last_eaet_size;
-  struct timeval firsttime, secondtime;
-  bool IfComputed;
-  double log_adjust_interval;
+  double wait_interval;//调整等待时间
+  double next_adjust_time;//下次调整时间
+  uint64_t last_eaet_size;//上次计算所得size
+  struct timeval firsttime, secondtime;//时间控制
+  double log_adjust_interval;//log调整间隔
 
   // internally, pool uses full 64-bit numbers for head and tail
   // however, the valid range for item_offset is limited to
@@ -164,9 +168,9 @@ class CircularLog : public PoolInterface {
   // whenever returning the offset to the outside or using a masked offset
   // given from the outside
   uint64_t head_;                 // start offset of items
-  uint64_t tail_;                 // end offset of items
+  volatile uint64_t tail_;                 // end offset of items
   uint64_t tail_for_cleanup;
-} __attribute__((aligned(128)));  // To prevent false sharing caused by
+}; // __attribute__((aligned(128)));  // To prevent false sharing caused by
                                   // adjacent cacheline prefetching.
 }
 }

@@ -144,7 +144,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     return Result::kPartialValue;
   }
   else{
-    setStatistics(operation_pool->rth, key_hash, item_size, true);
+    if(operation_pool->sample_flag) setStatistics(operation_pool->rth, key_hash, item_size, true);
     return Result::kGetSuccess;
   }
   

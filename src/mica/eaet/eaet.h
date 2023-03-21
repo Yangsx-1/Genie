@@ -16,7 +16,7 @@ class STable{
 
   struct aet_item{
     uint64_t keyhash;
-    uint64_t last_time;//8bit tenant id
+    uint64_t last_time;
     uint64_t total_access_time;
     uint64_t total_reuse_time;
   };
@@ -75,8 +75,8 @@ void rthClear(rthRec *rth);
 uint64_t getsize(rthRec *rth, uint64_t tot_memory, uint64_t PGAP, double hit_ratio);
 bool if_need_sample(uint64_t keyhash);
 void setStatistics(rthRec *rth, uint64_t key, uint64_t input_size, bool isGet);
-uint64_t compute_bias(rthRec *rth, uint64_t tmpsize, double target_hit_ratio, size_t tenant_id);
-uint64_t compute_bias_with_theta(rthRec *rth, uint64_t tmpsize, double target_hit_ratio, size_t tenant_id);
+uint64_t compute_bias(rthRec *rth, uint64_t tmpsize, size_t tenant_id);
+uint64_t compute_bias_with_theta(rthRec *rth, uint64_t tmpsize, size_t tenant_id, double* out_theta);
 void ratio_compute(const rthRec *rth, double target, uint64_t eaet_size);
 }
 }

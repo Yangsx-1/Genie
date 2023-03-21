@@ -62,6 +62,7 @@ LTable<StaticConfig>::LTable(const ::mica::util::Config& config, Alloc* alloc,
   num_buckets_ = ::mica::util::safe_cast<uint32_t>(num_buckets);
   num_buckets_mask_ = ::mica::util::safe_cast<uint32_t>(num_buckets - 1);
   num_extra_buckets_ = ::mica::util::safe_cast<uint32_t>(num_extra_buckets);
+  //printf("bucket number=%d\n", num_buckets_);
 
   {
     size_t shm_size =
@@ -149,6 +150,11 @@ LTable<StaticConfig>::~LTable() {
     delete pools_[i];
   }
   delete pools_;
+}
+
+template <class StaticConfig>
+BasicLossyLTableConfig::Pool* LTable<StaticConfig>::get_pool(size_t tenant_id){
+  return pools_[tenant_id];
 }
 
 template <class StaticConfig>

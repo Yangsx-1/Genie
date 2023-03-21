@@ -45,13 +45,13 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
     // check if the original item is still there
     if (located_bucket->item_vec[item_index] == item_vec) {
       // allocate new space
-      uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
+      //uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
 
       uint64_t new_item_offset = pool_->allocate(item_size);
       uint8_t new_item_wrap_number = pool_->get_wrap_around_number();
       //uint64_t new_tail = Specialization::get_tail(pool_);
 
-      uint64_t new_tail_for_cleanup = pool_->get_tail_for_cleanup();
+      //uint64_t new_tail_for_cleanup = pool_->get_tail_for_cleanup();
 
       // see if the original item is still valid because
       // pool::allocate() by this thread or other threads may

@@ -411,6 +411,58 @@ void LTable<StaticConfig>::cleanup_bucket(uint64_t old_tail,
 }
 
 template <class StaticConfig>
+bool LTable<StaticConfig>::isValid(uint8_t log_wrap_number, uint8_t item_wrap_number, uint64_t tail_, uint64_t offset, uint64_t size_){
+  uint64_t kWrapAroundSize = 2097152;
+  if(log_wrap_number == item_wrap_number){
+    return true;
+  }
+  else if(log_wrap_number - item_wrap_number == 1){
+    return ((offset > tail_) && (offset < (size_ - kWrapAroundSize)));
+  }
+  else{
+    return false;
+  }
+}
+
+template <class StaticConfig>
+void LTable<StaticConfig>::cleanup_specified_bucket(uint32_t begin_index, uint32_t clean_number){
+  uint32_t bucket_index = begin_index;
+  uint32_t cleaned_bucket_number = 0;
+  uint64_t tails[kTenantCount] = {0};
+  uint8_t wrap_numbers[kTenantCount] = {0};
+  uint64_t sizes[kTenantCount] = {0};
+  for(size_t i = 0; i < kTenantCount; i++){
+    Pool* tmp_pool = pools_[i];
+    tails[i] = tmp_pool->get_tail();
+    wrap_numbers[i] = tmp_pool->get_wrap_around_number();
+    sizes[i] = tmp_pool->get_size();
+  }
+  while (cleaned_bucket_number < clean_number) {
+    Bucket* bucket = buckets_ + bucket_index;
+
+    lock_bucket(bucket);
+    Bucket* current_bucket = bucket;
+    size_t item_index;
+    for (item_index = 0; item_index < StaticConfig::kBucketSize;
+          item_index++) {
+      uint64_t* item_vec_p = &current_bucket->item_vec[item_index];
+      if (*item_vec_p == 0) continue;
+
+      uint64_t item_offset = get_item_offset(*item_vec_p);
+      uint8_t item_wrap_number = get_item_wrap_around_number(*item_vec_p);
+      size_t tenant_id = get_item_tenant_id(*item_vec_p);
+      if(!isValid(wrap_numbers[tenant_id], item_wrap_number, tails[tenant_id], item_offset, sizes[tenant_id])){
+        *item_vec_p = 0;
+      }
+    }
+    unlock_bucket(bucket);
+
+    cleaned_bucket_number++;
+    bucket_index = (bucket_index + 1U) & num_buckets_mask_;
+  }
+}
+
+template <class StaticConfig>
 void LTable<StaticConfig>::cleanup_all() {
   if (std::is_base_of<::mica::pool::CircularLogTag,
                       typename Pool::Tag>::value) {
@@ -418,6 +470,12 @@ void LTable<StaticConfig>::cleanup_all() {
     cleanup_bucket((uint64_t)1 << rshift_, 0);
   }
 }
+
+template <class StaticConfig>
+uint32_t LTable<StaticConfig>::get_bucket_mask(){
+  return num_buckets_mask_;
+}
+
 }
 }
 

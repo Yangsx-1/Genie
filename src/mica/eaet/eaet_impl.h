@@ -266,7 +266,7 @@ uint64_t getsize(rthRec *rth, uint64_t tot_memory, uint64_t PGAP, double hit_rat
     return size;
 }
 
-uint64_t need_sample_mask = (uint64_t(1) << 17) - 1;//2^17 - 1(128 * 1024 - 1)
+uint64_t need_sample_mask = (uint64_t(1) << 16) - 1;//2^17 - 1(128 * 1024 - 1)
 uint64_t need_sample_comp = 1024;
 
 bool if_need_sample(uint64_t keyhash){
@@ -369,7 +369,7 @@ void ratio_compute(const rthRec *rth, double target, uint64_t eaet_size){
     return bias;
 }*/
 
-uint64_t compute_bias(rthRec *rth, uint64_t tmpsize, double target_hit_ratio, size_t tenant_id){
+uint64_t compute_bias(rthRec *rth, uint64_t tmpsize, size_t tenant_id){
     uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
     double threshold = 0.5 * tmpsize;
     double coef = 0;
@@ -406,7 +406,7 @@ uint64_t compute_bias(rthRec *rth, uint64_t tmpsize, double target_hit_ratio, si
     return bias;
 }
 
-uint64_t compute_bias_with_theta(rthRec *rth, uint64_t tmpsize, double target_hit_ratio, size_t tenant_id){
+uint64_t compute_bias_with_theta(rthRec *rth, uint64_t tmpsize, size_t tenant_id, double* out_theta){
     uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
     double threshold = 0.5 * tmpsize;
     double coef = 0;
@@ -458,7 +458,7 @@ uint64_t compute_bias_with_theta(rthRec *rth, uint64_t tmpsize, double target_hi
     for(int i = 0; i < 30; i++){
         sorted_vec[i] = sorted_access_time[i];
     } 
-    skewEstimation(sorted_vec, 30);
+    *out_theta = skewEstimation(sorted_vec, 30);
     //printf("lcore%u tenant%u\teaet size=%lu\tbias=%lu\n", lcore_id, tenant_id, tmpsize, bias);
 
     return bias;

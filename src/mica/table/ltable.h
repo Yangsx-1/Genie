@@ -90,6 +90,7 @@ class LTable : public TableInterface {
   // ltable_impl/init.h
   LTable(const ::mica::util::Config& config, Alloc* alloc, uint64_t table_pool_size);
   ~LTable();
+  BasicLossyLTableConfig::Pool* get_pool(size_t tenant_id);
   void reset();
   // ltable_impl/del.h
   Result del(uint64_t key_hash, const char* key, size_t key_length);
@@ -116,6 +117,15 @@ class LTable : public TableInterface {
   void print_buckets() const;
   void print_stats() const;
   void reset_stats(bool reset_count);
+  /*void set_tenant_get_ratio(uint8_t tenant_id, double get_ratio);
+  void set_tenant_key_size(uint8_t tenant_id, double key_size);
+  void set_tenant_value_size(uint8_t tenant_id, double value_size);
+  void set_tenant_tput(uint8_t tenant_id, double tput);
+  void set_tenant_theta(uint8_t tenant_id, double theta);*/
+
+  //ltable_impl/bucket.h
+  uint32_t get_bucket_mask();
+  void cleanup_specified_bucket(uint32_t begin_index, uint32_t clean_number);
 
  private:
   typedef LTablePoolSpecialization<typename Pool::Tag> Specialization;
@@ -224,6 +234,8 @@ class LTable : public TableInterface {
   size_t find_same_tag(Bucket* bucket, uint16_t tag, Bucket** located_bucket);
   void cleanup_bucket(uint64_t old_tail, uint64_t new_tail);
   void cleanup_all();
+  bool isValid(uint8_t log_wrap_number, uint8_t item_wrap_number, 
+              uint64_t log_offset, uint64_t item_offset, uint64_t size_);
 
   // ltable_impl/info.h
   void print_bucket(const Bucket* bucket) const;
@@ -283,7 +295,7 @@ class LTable : public TableInterface {
   ExtraBucketFreeList extra_bucket_free_list_;
 
   mutable Stats stats_;
-} __attribute__((aligned(128)));  // To prevent false sharing caused by
+}; //__attribute__((aligned(128)));  // To prevent false sharing caused by
                                   // adjacent cacheline prefetching.
 }
 }

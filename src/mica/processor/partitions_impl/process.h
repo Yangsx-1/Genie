@@ -9,11 +9,6 @@ namespace processor {
 template <class StaticConfig>
 template <class RequestAccessor>
 void Partitions<StaticConfig>::process(RequestAccessor& ra) {
-  //uint64_t reload_value_i = 1;
-  size_t reload_value_length_ = 8;
-  char reload_value_[reload_value_length_];
-  memset(reload_value_, 128, sizeof(char)*reload_value_length_);
-
   assert(::mica::util::lcore.lcore_id() != ::mica::util::LCore::kUnknown);
   uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
   uint64_t stage_gap = load_stats_[lcore_id].stage_gap;
@@ -174,6 +169,10 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
               ra.set_out_value_length(index, out_value_length);
             }
             else{//kgetnotfound, reset_item
+              size_t reload_value_length_ = 8;
+              if(ra.get_key(index)[7] == 1) reload_value_length_ = 16;
+              char reload_value_[reload_value_length_];
+              memset(reload_value_, 128, sizeof(char)*reload_value_length_);
               result = table->reset_item(key_hash, ra.get_key(index),ra.get_key_length(index), reload_value_,
                                 reload_value_length_, true);//result=kReloadSuccess
               ra.set_out_value_length(index, 0);

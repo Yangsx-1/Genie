@@ -106,13 +106,13 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
           pool_->unlock();
 
         unlock_bucket(bucket);
-        setStatistics(pool_->rth, key_hash, old_item_size, false);
+        if(pool_->sample_flag) setStatistics(pool_->rth, key_hash, old_item_size, false);
         return Result::kSuccess;
       }
     }
   }
 
-  uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
+  //uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
 
   uint64_t new_item_offset = pool_->allocate(new_item_size);
   uint8_t new_item_wrap_number = pool_->get_wrap_around_number();
@@ -124,10 +124,10 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
     return Result::kInsufficientSpace;
   }
   //uint64_t new_tail;
-  uint64_t new_tail_for_cleanup;
+  //uint64_t new_tail_for_cleanup;
   if (std::is_base_of<::mica::pool::CircularLogTag, typename Pool::Tag>::value){
     //new_tail = Specialization::get_tail(pool_);
-    new_tail_for_cleanup = pool_->get_tail_for_cleanup();
+    //new_tail_for_cleanup = pool_->get_tail_for_cleanup();
   }
   Item* new_item = reinterpret_cast<Item*>(pool_->get_item(new_item_offset));
   /*
@@ -178,7 +178,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
   }
 
   stat_inc(&Stats::count);
-  setStatistics(pool_->rth, key_hash, new_item_size + pool_->get_poolstruct_item_size(), false);
+  if(pool_->sample_flag) setStatistics(pool_->rth, key_hash, new_item_size + pool_->get_poolstruct_item_size(), false);
   return Result::kSuccess;
 }
 
@@ -288,7 +288,7 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
     }
   }
 
-  uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
+  //uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
 
   uint64_t new_item_offset = pool_->allocate(new_item_size);
   uint8_t new_item_wrap_number = pool_->get_wrap_around_number();
@@ -300,10 +300,10 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
     return Result::kInsufficientSpace;
   }
   //uint64_t new_tail;
-  uint64_t new_tail_for_cleanup;
+  //uint64_t new_tail_for_cleanup;
   if (std::is_base_of<::mica::pool::CircularLogTag, typename Pool::Tag>::value){
     //new_tail = Specialization::get_tail(pool_);
-    new_tail_for_cleanup = pool_->get_tail_for_cleanup();
+    //new_tail_for_cleanup = pool_->get_tail_for_cleanup();
   }
   Item* new_item = reinterpret_cast<Item*>(pool_->get_item(new_item_offset));
   /*
@@ -356,7 +356,7 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
   stat_inc(&Stats::count);
   /*bool need_sample = getStatistics(rth, key_hash, 40, false);
   if(need_sample) located_bucket->item_vec[item_index] |= (uint64_t(1) << 39);*/
-  setStatistics(pool_->rth, key_hash, new_item_size + pool_->get_poolstruct_item_size(), true);
+  if(pool_->sample_flag) setStatistics(pool_->rth, key_hash, new_item_size + pool_->get_poolstruct_item_size(), true);
   return Result::kReloadSuccess;
 }
 }
