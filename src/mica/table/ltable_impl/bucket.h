@@ -416,7 +416,7 @@ bool LTable<StaticConfig>::isValid(uint8_t log_wrap_number, uint8_t item_wrap_nu
   if(log_wrap_number == item_wrap_number){
     return true;
   }
-  else if(log_wrap_number - item_wrap_number == 1){
+  else if(log_wrap_number == static_cast<uint8_t>(static_cast<uint8_t>(1) + item_wrap_number)){
     return ((offset > tail_) && (offset < (size_ - kWrapAroundSize)));
   }
   else{
@@ -451,8 +451,14 @@ void LTable<StaticConfig>::cleanup_specified_bucket(uint32_t begin_index, uint32
       uint64_t item_offset = get_item_offset(*item_vec_p);
       uint8_t item_wrap_number = get_item_wrap_around_number(*item_vec_p);
       size_t tenant_id = get_item_tenant_id(*item_vec_p);
+      //Pool* tmp_pool = pools_[tenant_id];
+      //tails[tenant_id] = tmp_pool->get_tail();
+      //wrap_numbers[tenant_id] = tmp_pool->get_wrap_around_number();
+      //sizes[tenant_id] = tmp_pool->get_size();
       if(!isValid(wrap_numbers[tenant_id], item_wrap_number, tails[tenant_id], item_offset, sizes[tenant_id])){
         *item_vec_p = 0;
+        stat_inc(&Stats::cleanup);
+        stat_dec(&Stats::count);
       }
     }
     unlock_bucket(bucket);

@@ -2,7 +2,6 @@
 #define _EAET_IMPL
 #include "mica/eaet/eaet.h"
 #include<cassert>
-//#include<string.h>
 #include<math.h>
 #include<vector>
 #include <algorithm>
@@ -13,6 +12,8 @@
 
 namespace mica{
 namespace eaet{
+#define rth_domain 256
+
 STable::STable()
 {
     size_t num_buckets = 1048576;// 65536;
@@ -87,7 +88,7 @@ void STable::add_item(uint64_t keyhash, uint64_t last_time, uint64_t curr_time, 
     }
 }
 
-size_t STable::size(){
+/*size_t STable::size(){
     size_t numbers = 0;
     for(size_t bucket_index = 0; bucket_index < num_buckets_; bucket_index++){
         for(size_t item_index = 0; item_index < item_number; item_index++){
@@ -95,17 +96,8 @@ size_t STable::size(){
         }
     }
     return numbers;
-}
+}*/
 
-
-
-#define rth_domain 256
-
-uint64_t maxer(uint64_t a, uint64_t b)
-{
-    if (a > b) return a;
-    return b;
-}
 
 uint64_t domain_value_to_index(uint64_t value)//用来将一个长的reuse time进行压缩，以便存储
 {
@@ -171,35 +163,29 @@ uint64_t rthUpdate(rthRec *rth, uint64_t key, uint64_t ori_size, uint64_t cur_si
     }
     // 更新该key节点的last_acces_time
     last_access_time = rth->n;
-    //rth->n += maxer(a, b);
     return last_access_time;
 }
 
-void rthCalcMRC(rthRec *rth, uint64_t tot_memory, uint64_t PGAP)
+void rthCalcMRC(rthRec *rth, uint64_t tot_memory, uint64_t memory_step)
 {
-    //std::ofstream outfile,output;
     double sum = 0, tot = 0, N = 0;
     long step = 1; int dom = 1, dT = 1;
     int T = 0;
 
     double read_sum = 0;//get操作总数
     double read_N = 0;//总字节数
-    //outfile.open("rth_readrtd.txt");
     for (int i = 0; i < rth_RTD_LENGTH; i++)
     {
-        //outfile << i << '\t' << rth->read_rtd[i] << '\t' << rth->rtd[i] << std::endl;
         read_N += rth->read_rtd[i];
         N += rth->rtd[i] + rth->rtd_del[i];
     }
-    rth->mrc = (double*)malloc((tot_memory / PGAP) * sizeof(double) + 10);
-    memset(rth->mrc, 0, (tot_memory / PGAP) * sizeof(double) + 10);
-    for (int i = 0; i < (tot_memory / PGAP + 1); i++)
+    rth->mrc = (double*)malloc((tot_memory / memory_step) * sizeof(double) + 10);
+    memset(rth->mrc, 0, (tot_memory / memory_step) * sizeof(double) + 10);
+    for (int i = 0; i < (tot_memory / memory_step + 1); i++)
         rth->mrc[i] = 1.0;
     if (read_N == 0) return;
-    //output.open("record.txt");
-    for (uint64_t c = PGAP; c <= tot_memory; c += PGAP)//用dT记录下标
+    for (uint64_t c = memory_step; c <= tot_memory; c += memory_step)//用dT记录下标
     {
-        
         while (dT < rth_RTD_LENGTH)
         {
             double d = 1.0 * (rth->rtd[dT] + rth->rtd_del[dT]);//d表示当前下标rtd数量，sum表示当前总rtd数量
@@ -225,11 +211,8 @@ void rthCalcMRC(rthRec *rth, uint64_t tot_memory, uint64_t PGAP)
             if (tot + tmp >= c) ed = mid; else be = mid;
         }
         double miss_ratio = (read_N - read_sum - 1.0 * rth->read_rtd[dT] / step * ed) / read_N;
-        rth->mrc[(int)(c / PGAP)] = miss_ratio;
-        //output << read_N << '\t' << read_sum << '\t' << miss_ratio << std::endl;
+        rth->mrc[(int)(c / memory_step)] = miss_ratio;
     }
-    //outfile.close();
-    //output.close();
 }
 
 void rthClear(rthRec *rth)
@@ -243,10 +226,10 @@ void rthClear(rthRec *rth)
     rth->m = 0;
 }
 
-uint64_t getsize(rthRec *rth, uint64_t tot_memory, uint64_t PGAP, double hit_ratio) //PGAP单位为byte
+uint64_t get_eaet_size(rthRec *rth, uint64_t total_memory, uint64_t step, double hit_ratio) //step单位为byte
 {
     double miss_ratio = 1 - hit_ratio;
-    uint64_t max_index = tot_memory / PGAP + 1;
+    uint64_t max_index = total_memory / step + 1;
     uint64_t index = 0;
     for (uint64_t i = 1; i < max_index; ++i) 
     {
@@ -256,11 +239,11 @@ uint64_t getsize(rthRec *rth, uint64_t tot_memory, uint64_t PGAP, double hit_rat
             break;
         }
     }
-    uint64_t size = PGAP * index;
+    uint64_t size = step * index;
     if (index == 0)
     {
         printf("we can only give you the max memory size\n");
-        size = tot_memory;
+        size = total_memory;
     }
 
     return size;
@@ -269,12 +252,12 @@ uint64_t getsize(rthRec *rth, uint64_t tot_memory, uint64_t PGAP, double hit_rat
 uint64_t need_sample_mask = (uint64_t(1) << 16) - 1;//2^17 - 1(128 * 1024 - 1)
 uint64_t need_sample_comp = 1024;
 
-bool if_need_sample(uint64_t keyhash){
+bool set_sampling(uint64_t keyhash){
     return ((keyhash & need_sample_mask) < need_sample_comp);
 }
 
 void setStatistics(rthRec *rth, uint64_t keyhash, uint64_t size, bool isGet){
-    if(if_need_sample(keyhash)){
+    if(set_sampling(keyhash)){
         //printf("keyhash=%x\tkeyhash&mask17=%x\tkeyhash&mask20=%x\n", keyhash, keyhash & ((uint64_t(1) << 17) - 1), keyhash & ((uint64_t(1) << 20) - 1));
         size_t bucket_index = rth->timehash.calc_bucket_index(keyhash >> 20);
         STable::Bucket* curr_bucket = &rth->timehash.buckets_[bucket_index];
@@ -302,7 +285,7 @@ void setStatistics(rthRec *rth, uint64_t keyhash, uint64_t size, bool isGet){
     return tmp1.second.first > tmp2.second.first;
 }
 
-void ratio_compute(const rthRec *rth, double target, uint64_t eaet_size){
+void ratio_calculation(const rthRec *rth, double target, uint64_t eaet_size){
     std::vector<std::pair<uint64_t, std::pair<uint64_t, double>>> tmp_vector;//<keyhash, <access number, avg_reuse>>
     uint64_t total_access_count = 0;
     for(auto kv:rth->statistichash){
@@ -338,38 +321,7 @@ void ratio_compute(const rthRec *rth, double target, uint64_t eaet_size){
     printf("ratio0~0.5=%lf\t, ratio0.5~1=%lf\t, ratio>1=%lf\n", ratio_5 / total, ratio_10 / total, ratio_higher / total);
 }*/
 
-/*uint64_t compute_bias(rthRec *rth, uint64_t tmpsize){
-    double number_5 = 0;
-    double number_10 = 0;
-    double threshold = 0.5 * tmpsize;
-    double compute_coef = 0;
-    for(auto kv:rth->statistichash){//统计数目
-        double avg_reuse = kv.second.second * 1.0 / kv.second.first;
-        if(avg_reuse <= threshold){
-            number_5++;
-            //compute_coef += 1;
-            double tmpreuse = avg_reuse;
-            while(avg_reuse < threshold){
-                avg_reuse = avg_reuse + tmpreuse;
-            }
-            assert(avg_reuse < tmpsize);
-            compute_coef += (tmpsize / avg_reuse - 1);
-        }else if(avg_reuse > threshold && avg_reuse < tmpsize){
-            number_10++;
-            //compute_coef += (2.0 / 3.0 + (2.0 * avg_reuse / tmpsize) - (8.0 * avg_reuse * avg_reuse / (3.0 * tmpsize * tmpsize)));
-            //double x = avg_reuse / tmpsize;
-            //compute_coef += -68 * x * x * x + 150 * x * x - 108.5 * x + 26.166;
-            compute_coef += (tmpsize / avg_reuse - 1);
-        }
-    }
-    compute_coef /= (number_5 + number_10);
-
-    printf("compute_coef = %lf\n", compute_coef);
-    uint64_t bias = compute_coef * tmpsize;
-    return bias;
-}*/
-
-uint64_t compute_bias(rthRec *rth, uint64_t tmpsize, size_t tenant_id){
+uint64_t supplement_of_stage_one(rthRec *rth, uint64_t tmpsize, size_t tenant_id){
     uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
     double threshold = 0.5 * tmpsize;
     double coef = 0;
@@ -406,7 +358,7 @@ uint64_t compute_bias(rthRec *rth, uint64_t tmpsize, size_t tenant_id){
     return bias;
 }
 
-uint64_t compute_bias_with_theta(rthRec *rth, uint64_t tmpsize, size_t tenant_id, double* out_theta){
+uint64_t supplement_of_stage_two(rthRec *rth, uint64_t tmpsize, size_t tenant_id, double* out_theta){
     uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
     double threshold = 0.5 * tmpsize;
     double coef = 0;
@@ -453,7 +405,7 @@ uint64_t compute_bias_with_theta(rthRec *rth, uint64_t tmpsize, size_t tenant_id
     coef = coef / (lower_thresh + between);
 
     uint64_t bias = tmpsize * coef;
-    std::vector<uint32_t> sorted_access_time = GetMaxNumbers(access_time_vec, 30);
+    std::vector<uint32_t> sorted_access_time = GetMaxNumbers(access_time_vec, 30);//to do
     uint32_t sorted_vec[30];
     for(int i = 0; i < 30; i++){
         sorted_vec[i] = sorted_access_time[i];

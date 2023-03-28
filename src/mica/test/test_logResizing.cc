@@ -9,7 +9,7 @@
 #include<inttypes.h>
 
 using namespace std;
-bool resize_log();
+bool log_resizing();
 void update_log_size();
 void update_log_parameter();
 void print_stats();
@@ -64,7 +64,7 @@ int main(){
         flag = 0;
         while(flag == 0){//resize_log可以运行的最后一次，会把flag置为1
             tail_ += g1()%256;
-            resize_log();
+            log_resizing();
         }
     }
 
@@ -90,7 +90,7 @@ int main(){
     return 0;
 }
 
-bool resize_log(){
+bool log_resizing(){
   if (concurrent_access_mode_ != 0){
     fprintf(stderr, "error: concurrent_access_mode_ != 0\n");
     assert(false);

@@ -52,7 +52,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   assert(concurrent_access_mode_ == 0);
   init_size = size;
   size_ = size / 2;
-  //printf("init size=%lu\n", size_);
+  printf("init size=%lu\n", size_);
   mask_ = size - 1;
 
   lock_ = 0;
@@ -61,20 +61,21 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   tail_for_cleanup = 0;
   wrap_around_number_ = 0;
 
-  wait_interval = 0.5;
+  timewatcher.init_start();
+  wait_interval = 1;
   log_adjust_interval = 3;
   next_adjust_time = log_adjust_interval + wait_interval;
-  gettimeofday(&firsttime, NULL);
+  timewatcher.init_end();
+  firsttime = timewatcher.now();
   rth = new ::mica::eaet::rthRec();
 
-  eaet_need_compute = 0;
+  eaet_calculation = 0;
   sample_flag = true;
   /*
   memory_adjustment_flag_ = 0;
   log_size_calculation_flag_ = 0;
   */
   
-  log_resize_flag = 0;
   mth_thres_ = 
     static_cast<uint64_t>(static_cast<double>(size_) * mth_thres);//hello
   ma_thres_ = 
@@ -177,7 +178,7 @@ bool CircularLog<StaticConfig>::is_valid(WrapAround item_wrap_number, Offset off
     if(wrap_around_number_ == item_wrap_number){
       return true;
     }
-    else if(wrap_around_number_ - item_wrap_number == 1){
+    else if(wrap_around_number_ == static_cast<uint8_t>(static_cast<uint8_t>(1) + item_wrap_number)){
       return ((offset > tail_) && (offset < (size_ - kWrapAroundSize)));
     }
     else{
@@ -422,7 +423,7 @@ uint64_t CircularLog<StaticConfig>::eaet(){
 }
 
 template <class StaticConfig>
-uint64_t CircularLog<StaticConfig>::compute_eaet_with_bias(size_t local_id, double* out_theta){
+uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* out_theta){
   double target_diff = target_hit_ratio - last_hit_rate[tenant_id_];
   uint64_t eaet_log_size = 0;
   uint64_t msize = 1024 * 1024;
@@ -431,9 +432,9 @@ uint64_t CircularLog<StaticConfig>::compute_eaet_with_bias(size_t local_id, doub
     uint64_t granularity_size = 2 * msize; //2M
     uint64_t max_memory = init_size;//4G
     rthCalcMRC(rth, max_memory, granularity_size);
-    uint64_t tmpsize = getsize(rth, max_memory, granularity_size, target_hit_ratio);//EAET size
-    uint64_t bias1 = compute_bias(rth, tmpsize, tenant_id_);//first bias
-    uint64_t bias2 = compute_bias_with_theta(rth, tmpsize + bias1, tenant_id_, out_theta);//second bias
+    uint64_t tmpsize = get_eaet_size(rth, max_memory, granularity_size, target_hit_ratio);//EAET size
+    uint64_t bias1 = supplement_of_stage_one(rth, tmpsize, tenant_id_);//first bias
+    uint64_t bias2 = supplement_of_stage_two(rth, tmpsize + bias1, tenant_id_, out_theta);//second bias
     eaet_log_size = tmpsize + bias2;// eaet + second bias
     printf(YELLOW"lcore%ld tenant%d using EAET log size:%lu\n"NONE, local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(eaet_log_size));
   }else{//误差小不需要调
@@ -447,30 +448,30 @@ uint64_t CircularLog<StaticConfig>::compute_eaet_with_bias(size_t local_id, doub
     eaet_log_size = kAdjustMinimumSize;
   }
   eaet_log_size = ::mica::util::roundup<2 * 1048576>(eaet_log_size);
-  last_eaet_size = eaet_log_size;
+  last_log_size = eaet_log_size;
   return eaet_log_size;
 }
 
 template <class StaticConfig>
-uint64_t CircularLog<StaticConfig>::fine_adjustment(double diff_time){
+uint64_t CircularLog<StaticConfig>::fine_grained_adjustment(double diff_time){
   double target_diff = target_hit_ratio - last_hit_rate[tenant_id_];
-  uint64_t eaet_log_size;
+  uint64_t log_size;
   uint64_t msize = 1024 * 1024;
   double upper_error = 0.03;
-  uint64_t new_old_diff = last_eaet_size > get_size() ? last_eaet_size - get_size() : get_size() - last_eaet_size;
+  uint64_t log_size_diff = last_log_size > get_size() ? last_log_size - get_size() : get_size() - last_log_size;
   size_t local_id = ::mica::util::lcore.lcore_id();
-  if(new_old_diff >= 2 * msize){//size没调整到
-    return last_eaet_size;
+  if(log_size_diff >= 2 * msize){//size没调整到
+    return last_log_size;
   }else{
     if(fabs(hit_rate_diff[tenant_id_]) < 0.0003 && diff_time > next_adjust_time){//命中率稳定后调整
       if(target_diff > upper_error || target_diff < -upper_error){//>upper_error or <-upper_error
-        eaet_log_size = get_size() * (1 + target_diff * 2);
+        log_size = get_size() * (1 + target_diff * 2);
       }else if(target_diff > 0){//0~upper_error
-        eaet_log_size = get_size() * (1 + upper_error);
+        log_size = get_size() * (1 + upper_error);
       }else{//-upper_error~0
-        eaet_log_size = get_size();
-        gettimeofday(&firsttime, NULL);
-        eaet_need_compute = 0;
+        log_size = get_size();
+        firsttime = timewatcher.now();
+        eaet_calculation = 0;
         sample_flag = true;
         printf(YELLOW"lcore%ld tenant%d finish adjustment!\n"NONE, local_id, tenant_id_);
         next_adjust_time = log_adjust_interval + wait_interval;//重置
@@ -478,106 +479,38 @@ uint64_t CircularLog<StaticConfig>::fine_adjustment(double diff_time){
       next_adjust_time = diff_time + wait_interval;
       printf(YELLOW"lcore%ld tenant%d second adjustment for log size!\n"NONE, local_id, tenant_id_);
     }else{//命中率不稳定
-      eaet_log_size = get_size();
+      log_size = get_size();
     }
   }
-  if(eaet_log_size > init_size){
-    eaet_log_size = init_size;
+  if(log_size > init_size){
+    log_size = init_size;
   }
-  if(eaet_log_size < kAdjustMinimumSize) {
-    eaet_log_size = kAdjustMinimumSize;
+  if(log_size < kAdjustMinimumSize) {
+    log_size = kAdjustMinimumSize;
   }
-  eaet_log_size = ::mica::util::roundup<2 * 1048576>(eaet_log_size);
-  last_eaet_size = eaet_log_size;
-  return eaet_log_size;
+  log_size = ::mica::util::roundup<2 * 1048576>(log_size);
+  last_log_size = log_size;
+  return log_size;
 }
 
-/*template <class StaticConfig>
-uint64_t CircularLog<StaticConfig>::compute_new_log_size(double diff_time){
-  double upper_error = 0.03;
-  double target_diff = target_hit_ratio - last_hit_rate[tenant_id_];
-  size_t local_id = ::mica::util::lcore.lcore_id();
-  uint64_t eaet_log_size = 0;
-  uint64_t msize = 1024 * 1024;
-  if(!IfComputed){//第一次调整使用eaet,时间到了只算一次
-    if(target_diff < -upper_error || target_diff > 0){//误差较大或没达到命中率
-      uint64_t granularity_size = 2 * msize; //2M
-      uint64_t max_memory = init_size;//4G
-      rthCalcMRC(rth, max_memory, granularity_size);
-      uint64_t tmpsize = getsize(rth, max_memory, granularity_size, target_hit_ratio);//EAET size
-      uint64_t bias1 = compute_bias(rth, tmpsize, tenant_id_);//first bias
-      uint64_t bias2 = compute_bias_with_theta(rth, tmpsize + bias1, tenant_id_);//second bias
-      eaet_log_size = tmpsize + bias2;// eaet + second bias
-      printf("lcore%ld tenant%d using EAET log size:%lu\n", local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(eaet_log_size));
-    }else{//误差小不需要调
-      eaet_log_size = get_size();
-      printf("lcore%ld tenant%d workload not shift! maintaining old size!\n", local_id, tenant_id_);
-    }
-    IfComputed = true;
-    last_eaet_size = ::mica::util::roundup<2 * 1048576>(eaet_log_size);//记录eaet计算出来的size
-  }
-  else{//微调
-    uint64_t new_old_diff = last_eaet_size > get_size() ? last_eaet_size - get_size() : get_size() - last_eaet_size;
-    if(new_old_diff > 32 * msize){//size没调整到
-      return last_eaet_size;
-    }else{
-      if(fabs(hit_rate_diff[tenant_id_]) < 0.0003 && diff_time > next_adjust_time){//命中率稳定后调整
-        if(target_diff > upper_error || target_diff < -upper_error){//>upper_error or <-upper_error
-          eaet_log_size = get_size() * (1 + target_diff * 2);
-        }else if(target_diff > 0){//0~upper_error
-          eaet_log_size = get_size() * (1 + upper_error);
-        }else{//-upper_error~0
-          eaet_log_size = get_size();
-          gettimeofday(&firsttime, NULL);
-          IfComputed = false;
-          printf("lcore%ld tenant%d finish adjustment!\n", local_id, tenant_id_);
-          next_adjust_time = log_adjust_interval + wait_interval;//重置
-        }
-        next_adjust_time = diff_time + wait_interval;
-        printf("lcore%ld tenant%d second adjustment for log size!\n", local_id, tenant_id_);
-      }else{//命中率不稳定
-        eaet_log_size = get_size();
-        //printf("lcore%ld Hit rate not stable! Using old log size!\n", local_id);
-      }
-      last_eaet_size = ::mica::util::roundup<2 * 1048576>(eaet_log_size);
-    }
-  }
-  if(eaet_log_size > init_size){
-    //printf("here is the max initsize!\n");
-    eaet_log_size = init_size;
-  }
-  
-  //printf("lcore%ld complete compute rth:log_size=%ld\tn=%ld\n", local_id, eaet_log_size, rth->n);
-  if(eaet_log_size < kAdjustMinimumSize) {
-    eaet_log_size = kAdjustMinimumSize;
-  }
-  
-  eaet_log_size = ::mica::util::roundup<2 * 1048576>(eaet_log_size);
-
-  return eaet_log_size;
-}*/
-
 template <class StaticConfig>
-void CircularLog<StaticConfig>::resize_log(){
+void CircularLog<StaticConfig>::log_resizing(){
   if (concurrent_access_mode_ != 0){
     fprintf(stderr, "error: concurrent_access_mode_ != 0\n");
     assert(false);
   }
   //size_t local_id = ::mica::util::lcore.lcore_id();
-  gettimeofday(&secondtime, NULL);
-  double diff_time = (secondtime.tv_sec - firsttime.tv_sec) / 60.0;
+  secondtime = timewatcher.now();
+  double diff_time = timewatcher.diff(secondtime, firsttime) / 60.0;
   
   if(diff_time > log_adjust_interval){//到了需要调整的时间
-    if(eaet_need_compute == 0){
-      eaet_need_compute = 1;
+    if(eaet_calculation == 0){
+      eaet_calculation = 1;
       sample_flag = false;
-    }else if(eaet_need_compute == 2){
-      new_log_size_ = fine_adjustment(diff_time);
+    }else if(eaet_calculation == 2){
+      new_log_size_ = fine_grained_adjustment(diff_time);
     }
-    
 
-    //new_log_size_ = compute_new_log_size(diff_time);
-    //log_resize_flag = 1;
     if(new_log_size_ == size_){
       if(size_ - tail_ < kMinimumSize){//这一轮的数据已经写到最后一个page上了
         printf(YELLOW"lcore%lu tenant%u now time is %lf\n"NONE, ::mica::util::lcore.lcore_id(), tenant_id_, diff_time);
@@ -618,12 +551,7 @@ void CircularLog<StaticConfig>::resize_log(){
       }
     }
     else{//size_ =< tail_
-      //printf("tail=%zu,log size=%zu, log_resize_flag_=%d\n",tail_,size_,log_resize_flag);
       fprintf(stderr, "error: illegal tail of the log.\n");
-      //assert(!log_size_calculation_flag_);
-      //assert(!memory_adjustment_flag_);
-      assert(!(log_resize_flag >> 4));
-      assert(!(log_resize_flag & 1));
       assert(false);
     }
   }
@@ -650,12 +578,8 @@ void CircularLog<StaticConfig>::update_log_parameter(){
   }
   
     tail_ = 0;
-    /*
-    memory_adjustment_flag_ = 0;
-    log_size_calculation_flag_ = 0;
-    */
-    log_resize_flag = 0;
     wrap_around_number_++;
+    //printf(YELLOW"now wrap number=%d\n"NONE, wrap_around_number_);
 
     mth_thres_ = 
     static_cast<uint64_t>(

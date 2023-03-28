@@ -3,6 +3,7 @@
 #define MICA_DATAGRAM_DATAGRAM_SERVER_IMPL_H_
 #include "mica/eaet/eaet.h"
 #include "sys/time.h"
+#include "mica/datagram/mlp.h"
 
 #define BLUE         "\033[0;32;34m"
 #define RED          "\033[0;32;31m"
@@ -123,7 +124,6 @@ void DatagramServer<StaticConfig>::run() {
   // TODO: Implement a non-DPDK option.
   uint16_t lcore_count =
       static_cast<uint16_t>(::mica::util::lcore.lcore_count());
-
   // Register at the directory and keep it updated.
   stopping_ = false;
   dir_client_->register_server(server_info_.c_str());
@@ -139,13 +139,15 @@ void DatagramServer<StaticConfig>::run() {
     args[lcore_id].first = this;
     args[lcore_id].second = lcore_id;
   }
-
+  size_t table_count = processor_->get_table_count();
   for (uint16_t lcore_id = 1; lcore_id < lcore_count; lcore_id++) {
     if (!rte_lcore_is_enabled(static_cast<uint8_t>(lcore_id))) continue;
+    if(lcore_id == table_count){
+      rte_eal_remote_launch(clean_up_worker_proc_wrapper, &args[lcore_id], lcore_id);
+      continue;
+    }
     rte_eal_remote_launch(worker_proc_wrapper, &args[lcore_id], lcore_id);
   }
-  clean_up_thread_ = std::thread(clean_up_worker_proc_wrapper, this);
-  clean_up_thread_.detach();
   worker_proc_wrapper(&args[0]);
 
   rte_eal_mp_wait_lcore();
@@ -263,27 +265,27 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
 
 template <class StaticConfig>
 int DatagramServer<StaticConfig>::clean_up_worker_proc_wrapper(void* arg) {
-  /*auto v =
+  auto v =
       reinterpret_cast<std::pair<DatagramServer<StaticConfig>*, uint16_t>*>(
           arg);
-  v->first->clean_up_worker(v->second);*/
-  auto server = reinterpret_cast<DatagramServer<StaticConfig>*>(arg);
-  server->clean_up_worker(0);
+  v->first->clean_up_worker(v->second);
+  //auto server = reinterpret_cast<DatagramServer<StaticConfig>*>(arg);
+  //server->clean_up_worker(0);
   return 0;
 }
 
 template <class StaticConfig>
-void DatagramServer<StaticConfig>::check_available_compute(){
+void DatagramServer<StaticConfig>::check_memory_resizing(){
   size_t partition_count = processor_->get_table_count();
   size_t tenant_count = kTenantCount;
   for(uint16_t partition_number = 0; partition_number < partition_count; partition_number++){
     ::mica::processor::BasicPartitionsConfig::Table* tmp_table = processor_->get_table(partition_number);
     for(size_t tenant_id = 0; tenant_id < tenant_count; tenant_id++){
       ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(tenant_id);
-      if(tmp_pool->eaet_need_compute == 1){//需要计算
+      if(tmp_pool->eaet_calculation == 1){//需要计算
         double theta = 0;
-        tmp_pool->set_new_log_size(tmp_pool->compute_eaet_with_bias(partition_number, &theta));
-        tmp_pool->eaet_need_compute = 2;//计算完毕
+        tmp_pool->set_new_log_size(tmp_pool->memory_estimation(partition_number, &theta));
+        tmp_pool->eaet_calculation = 2;//计算完毕
         printf("out theta = %lf\n", theta);
         tenants_theta[tenant_id] += theta;
         tenants_theta_calculate_number[tenant_id]++;
@@ -301,19 +303,20 @@ void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id){
   size_t partition_id = 0;
   size_t partition_mask = partition_count - 1;
 
-  uint64_t compute_eaet_mask = 16 - 1;
+  uint64_t eaet_calculation_mask = 16 - 1;
 
   uint64_t bucket_mask = processor_->get_table(0)->get_bucket_mask();
   uint64_t bucket_number = bucket_mask + 1;
   uint32_t bucket_index = 0;
-  const uint32_t clean_number = 32768;
+  const uint32_t clean_number = 32768 * 8;
 
   uint64_t time_count = 0;
   
   while(true){
-    sleep(1);
-    time_count++;
-    if(!(time_count & compute_eaet_mask)) check_available_compute();
+    //sleep(1);
+    //time_count++;
+    //if(!(time_count & eaet_calculation_mask)) check_memory_resizing();
+    check_memory_resizing();
     //printf(BLUE"cleaning partition %d index %d\n"NONE, partition_id, bucket_index);
     processor_->get_table(partition_id)->cleanup_specified_bucket(bucket_index, clean_number);
     bucket_index += clean_number;
@@ -597,6 +600,10 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     double theta = tenants_theta[tenant_id] / 
         static_cast<double>(std::max(tenants_theta_calculate_number[tenant_id], uint64_t(1)));
     
+    double infos[5] = {theta, get_ratio, avg_key_length, avg_value_length, tput};
+    double cpu_usage = 0;
+    MultilayerPerceptron(infos, 5, &cpu_usage);
+
     ::mica::pool::hit_rate_diff[tenant_id] = hit_rate - ::mica::pool::last_hit_rate[tenant_id];
     ::mica::pool::last_hit_rate[tenant_id] = hit_rate;
 
@@ -605,6 +612,7 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     tenants_info_[tenant_id].value_size = avg_value_length;
     tenants_info_[tenant_id].tput = tput;
     tenants_info_[tenant_id].theta = theta;
+    tenants_info_[tenant_id].cpu_usage = cpu_usage;
 
     printf("tenant_id=%lu", tenant_id);
     printf(", tput=%7.3lf Mops", tput);
@@ -614,6 +622,7 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     printf(", key_length=%6.2lf", avg_key_length);
     printf(", value_length=%6.2lf", avg_value_length);
     printf(", theta=%6.2lf", theta);
+    printf(", cpu_usage=%6.2lf", cpu_usage);
     printf("\n");
   }
 

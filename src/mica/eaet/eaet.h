@@ -2,8 +2,6 @@
 #define _EAET_H
 
 #include<bits/stdint-uintn.h>
-#include<unordered_map>
-#include<unordered_set>
 #include<cstring>
 
 namespace mica{
@@ -33,7 +31,7 @@ class STable{
   void add_item(uint64_t keyhash, uint64_t last_time, uint64_t curr_time, Bucket* curr_bucket);
   //void cleanup_bucket(Bucket* bucket);
   //void cleanup_all();
-  size_t size();
+  //size_t size();
 
   uint32_t num_buckets_;
   uint32_t num_buckets_mask_;
@@ -66,18 +64,17 @@ class rthRec
     };
 };
 
-uint64_t maxer(uint64_t a, uint64_t b);
 uint64_t domain_value_to_index(uint64_t value);
 uint64_t rthGet(rthRec *rth, uint64_t key, uint64_t size, uint64_t last_access_time);
 uint64_t rthUpdate(rthRec *rth, uint64_t key, uint64_t ori_size, uint64_t cur_size, uint64_t last_access_time);
-void rthCalcMRC(rthRec *rth, uint64_t tot_memory, uint64_t PGAP);
+void rthCalcMRC(rthRec *rth, uint64_t tot_memory, uint64_t memory_step);
 void rthClear(rthRec *rth);
-uint64_t getsize(rthRec *rth, uint64_t tot_memory, uint64_t PGAP, double hit_ratio);
-bool if_need_sample(uint64_t keyhash);
+uint64_t get_eaet_size(rthRec *rth, uint64_t total_memory, uint64_t step, double hit_ratio);
+bool set_sampling(uint64_t keyhash);
 void setStatistics(rthRec *rth, uint64_t key, uint64_t input_size, bool isGet);
-uint64_t compute_bias(rthRec *rth, uint64_t tmpsize, size_t tenant_id);
-uint64_t compute_bias_with_theta(rthRec *rth, uint64_t tmpsize, size_t tenant_id, double* out_theta);
-void ratio_compute(const rthRec *rth, double target, uint64_t eaet_size);
+uint64_t supplement_of_stage_one(rthRec *rth, uint64_t tmpsize, size_t tenant_id);
+uint64_t supplement_of_stage_two(rthRec *rth, uint64_t tmpsize, size_t tenant_id, double* out_theta);
+//void ratio_calculation(const rthRec *rth, double target, uint64_t eaet_size);
 }
 }
 

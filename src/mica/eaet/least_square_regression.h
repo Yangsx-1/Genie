@@ -195,7 +195,6 @@ std::vector<uint32_t> GetMaxNumbers(std::vector<uint32_t> input, int k) {
 	create_heap(heap, k);
 	for (int i = k; i < nums.size(); ++i)
 	{
-		// 小顶堆
 		if (nums[i] > heap[0])
 		{
 			heap[0] = nums[i];

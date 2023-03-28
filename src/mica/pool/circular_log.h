@@ -9,6 +9,7 @@
 #include "mica/util/safe_cast.h"
 #include "mica/alloc/hugetlbfs_shm.h"
 #include "mica/eaet/eaet.h"
+#include "mica/util/stopwatch.h"
 #include <atomic>
 
 // Configuration file entries for CircularLog:
@@ -59,10 +60,10 @@ class CircularLog : public PoolInterface {
  */
 
   uint64_t eaet();//calculate the mrc
-  void resize_log();//update parameters  
+  void log_resizing();//update parameters  
   uint64_t compute_new_log_size(double diff_time);
-  uint64_t compute_eaet_with_bias(size_t local_id, double* out_theta);
-  uint64_t fine_adjustment(double diff_time);
+  uint64_t memory_estimation(size_t local_id, double* out_theta);
+  uint64_t fine_grained_adjustment(double diff_time);
 
   void lock();
   void unlock();
@@ -106,7 +107,7 @@ class CircularLog : public PoolInterface {
   uint32_t get_poolstruct_item_size();
 
   ::mica::eaet::rthRec* rth;
-  volatile int eaet_need_compute;//0不需要计算//1需要计算//2计算完毕
+  volatile int eaet_calculation;//0不需要计算//1需要计算//2计算完毕
   bool sample_flag;//是否需要sample
 
  private:
@@ -117,7 +118,7 @@ class CircularLog : public PoolInterface {
   uint64_t push_tail(uint64_t item_size);
 
   static constexpr size_t kMinimumSize = 2 * 1048576;//2MB
-  static constexpr size_t kAdjustMinimumSize = 2 * 1048576;//32MB
+  static constexpr size_t kAdjustMinimumSize = 16 * 1048576;//16MB
   static constexpr size_t kWrapAroundSize = 2 * 1048576;//2MB 
   static constexpr size_t kOffsetMask = (size_t(1) << kOffsetWidth) - 1;
   double mth_thres = 0.5;// threshold for appro-lru
@@ -147,7 +148,7 @@ class CircularLog : public PoolInterface {
   uint8_t memory_adjustment_flag_;//8 bit for flag the memory adjustment
   uint8_t log_size_calculation_flag_;//8 bit for flag the log size calculation
   */
-  uint8_t log_resize_flag;//8 bit to flag the log size calculation and memory adjustment
+
   uint64_t size_;  // a power of two
   uint64_t init_size;
   uint64_t new_log_size_;
@@ -157,8 +158,9 @@ class CircularLog : public PoolInterface {
 
   double wait_interval;//调整等待时间
   double next_adjust_time;//下次调整时间
-  uint64_t last_eaet_size;//上次计算所得size
-  struct timeval firsttime, secondtime;//时间控制
+  uint64_t last_log_size;//上次计算所得size
+  uint64_t firsttime, secondtime;//时间控制
+  ::mica::util::Stopwatch timewatcher;
   double log_adjust_interval;//log调整间隔
 
   // internally, pool uses full 64-bit numbers for head and tail

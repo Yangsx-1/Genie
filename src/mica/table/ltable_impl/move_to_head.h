@@ -73,7 +73,7 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
       }
 
       // we need to hold the lock until we finish writing
-      pool_->resize_log(); 
+      pool_->log_resizing(); 
       pool_->unlock();
       unlock_bucket(bucket);
 

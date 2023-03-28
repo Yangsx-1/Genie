@@ -220,6 +220,9 @@ ELSE(LTO)
   ADD_EXECUTABLE(test_logResizing src/mica/test/test_logResizing.cc)
   TARGET_LINK_LIBRARIES(test_logResizing common ${LIBRARIES})
 
+  ADD_EXECUTABLE(test_clean_table src/mica/test/test_clean_table.cc)
+  TARGET_LINK_LIBRARIES(test_clean_table common ${LIBRARIES})
+
   ADD_EXECUTABLE(test_memory_adjustment src/mica/test/test_memory_adjustment.cc)
   TARGET_LINK_LIBRARIES(test_memory_adjustment common ${LIBRARIES})
 

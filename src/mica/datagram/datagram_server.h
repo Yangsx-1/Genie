@@ -149,6 +149,7 @@ class DatagramServer {
     double value_size;
     double tput;
     double theta;
+    double cpu_usage;
   };
 
   // Directory service support.
@@ -161,7 +162,7 @@ class DatagramServer {
   void worker_proc(uint16_t lcore_id);
   static int clean_up_worker_proc_wrapper(void* arg);
   void clean_up_worker(uint16_t lcore_id);
-  void check_available_compute();
+  void check_memory_resizing();
   // TX packet handling.
   void check_pending_tx_full(RXTXState& tx_state);
   void check_pending_tx_min(RXTXState& tx_state);
@@ -262,7 +263,6 @@ class DatagramServer {
 
   std::string server_info_;
   std::thread directory_thread_;
-  std::thread clean_up_thread_;
   volatile bool stopping_;
 
   // Padding to separate static and dynamic fields.

@@ -140,7 +140,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
   set_item(new_item, key_hash, key, (uint32_t)key_length, value,
            (uint32_t)value_length);
   
-  pool_->resize_log();
+  pool_->log_resizing();
 
   // unlocking is delayed until we finish writing data at the new location;
   // otherwise, the new location may be invalidated (in a very rare case)
@@ -316,7 +316,7 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
   set_item(new_item, key_hash, key, (uint32_t)key_length, value,
            (uint32_t)value_length);
   
-  pool_->resize_log();
+  pool_->log_resizing();
 
   // unlocking is delayed until we finish writing data at the new location;
   // otherwise, the new location may be invalidated (in a very rare case)
