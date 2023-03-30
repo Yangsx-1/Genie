@@ -157,7 +157,7 @@ double skewEstimation(uint32_t initAccessTime[], uint64_t length){
     return skewResult.theta;
 }
 
-void uptodown(std::vector<uint32_t>& heap, int k, int pos)
+void uptodown(uint32_t* heap, int k, int pos)
 {
 	int i = pos;
 	int j = 2 * i + 1;
@@ -176,7 +176,7 @@ void uptodown(std::vector<uint32_t>& heap, int k, int pos)
 	}
 }
 
-void create_heap(std::vector<uint32_t>& heap, int k)
+/*void create_heap(std::vector<uint32_t>& heap, int k)
 {
 	int pos = k / 2 - 1;
 	for (int i = pos; i >= 0; i--)
@@ -203,4 +203,4 @@ std::vector<uint32_t> GetMaxNumbers(std::vector<uint32_t> input, int k) {
 	}
     sort(heap.begin(), heap.end(), std::greater<int>());
     return heap;
-}
+}*/

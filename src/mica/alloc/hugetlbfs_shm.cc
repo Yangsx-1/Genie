@@ -105,7 +105,7 @@ HugeTLBFS_SHM::HugeTLBFS_SHM(const ::mica::util::Config& config)
   hugetlbfs_path_ = config.get("hugetlbfs_path").get_str("/mnt/huge");
   filename_prefix_ = config.get("filename_prefix").get_str("mica_shm_");
 
-  num_pages_to_init_ = config.get("num_pages_to_init").get_uint64(1048576);
+  num_pages_to_init_ = config.get("num_pages_to_init").get_uint64(1048576);//get all huge pages
 
   {
     auto c = config.get("num_pages_to_free");
@@ -231,7 +231,7 @@ void HugeTLBFS_SHM::initialize() {
     pages_.push_back(Page{0, nullptr, nullptr, 0, false});
     pages_[page_id].file_id = file_id;
     pages_[page_id].addr = p;
-    // printf("initial allocation of %zu on %p\n", kPageSize, p);
+    //printf("initial allocation of %zu on %p, page id %d\n", kPageSize, p, page_id);
 
     page_id++;
     if (next_file_id <= file_id) next_file_id = file_id + 1;
@@ -303,7 +303,7 @@ void HugeTLBFS_SHM::initialize() {
 
   page_id = 0;
   char buf[BUFSIZ];
-  while (true) {
+  while (true) {//initialize PAGE struct
     if (fgets(buf, sizeof(buf), f) == nullptr) break;
 
     size_t addr = strtoull(buf, nullptr, 16);
@@ -650,7 +650,7 @@ size_t HugeTLBFS_SHM::alloc(size_t length, size_t numa_node) {
         entry_id, length, num_pages, numa_node);
 
   // dump_page_info();
-
+  //printf("entry id=%d\n", entry_id);
   return entry_id;
 }
 
@@ -812,6 +812,7 @@ bool HugeTLBFS_SHM::map(size_t entry_id, void* ptr, size_t offset,
   mappings_[mapping_id].length = length;
   mappings_[mapping_id].page_offset = page_offset;
   mappings_[mapping_id].num_pages = num_pages;
+  //printf("mapping id=%d\n", mapping_id);
 
   unlock();
 
@@ -1000,44 +1001,88 @@ void HugeTLBFS_SHM::free_striped(void* ptr) {
     p = (void*)((size_t)p + kPageSize);
   }
 }
-  bool HugeTLBFS_SHM::memory_adjustment(size_t entry_id, size_t expect_length){
-    /*
-    Try to adjust the memory of the specific entry
-    */
-    //printf("memory_adjustment() start.\n");
-    lock();
-    if(entries_[entry_id].page_ids.empty()){
-      unlock();
-      fprintf(stderr, "error: invalid entry\n");
-      assert(false);
-      return false;
+
+void* HugeTLBFS_SHM::memory_adjustment(size_t entry_id, size_t expect_length, void* ptr){
+  /*
+  Try to adjust the memory of the specific entry
+  */
+  //printf("memory_adjustment() start.\n");
+  lock();
+  if(entries_[entry_id].page_ids.empty()){
+    unlock();
+    fprintf(stderr, "error: invalid entry\n");
+    assert(false);
+  }
+  if(expect_length > entries_[entry_id].length || expect_length <= 0){
+    unlock();
+    fprintf(stderr, "error: invalid expected length");
+    assert(false);
+  }
+  
+  return page_adjustment(entry_id, expect_length, ptr);
+}
+
+void* HugeTLBFS_SHM::page_adjustment(size_t entry_id, size_t expect_length, void* ptr){
+  size_t expect_num_pages = (expect_length + (kPageSize - 1)) / kPageSize;
+  size_t old_num_pages = entries_[entry_id].num_pages_occupied;
+  void* data_ptr;
+  if(expect_num_pages == old_num_pages){
+    if (verbose_) printf("No need to adjust pages for shm entry %zu\n", entry_id);
+    data_ptr = ptr;
+  }
+  else if(expect_num_pages > old_num_pages){//add
+    data_ptr = find_free_address(expect_length);
+    if(data_ptr == nullptr) return ptr;
+    for(size_t page_index = 0; page_index < old_num_pages; page_index++){//解绑
+      munmap(ptr, kPageSize);
+      ptr = (void*)((size_t)ptr + kPageSize);
     }
-    if(expect_length > entries_[entry_id].length || expect_length <= 0){
-      unlock();
-      fprintf(stderr, "error: invalid expected length");
-      assert(false);
-      return false;
+    size_t num_allocated_pages = old_num_pages;
+    for (size_t page_id = 0; page_id < pages_.size(); page_id++) {//增加page
+      if (num_allocated_pages == expect_num_pages) break;
+      if (pages_[page_id].addr == nullptr) continue;
+      if (pages_[page_id].in_use) continue;
+
+      assert(entries_[entry_id].page_ids.size() == num_allocated_pages);
+      entries_[entry_id].page_ids.push_back(page_id);
+      num_allocated_pages++;
+      pages_[page_id].in_use = true;
     }
-    size_t expect_num_pages = (expect_length + (kPageSize - 1)) / kPageSize;
-    if(expect_num_pages == entries_[entry_id].num_pages_occupied){
-      unlock();
-      if (verbose_) printf("No need to adjust pages for shm entry %zu\n", entry_id);
-      return true;
+    void* p = data_ptr;
+    for(size_t page_index = 0; page_index < expect_num_pages; page_index++){//重新挂上去
+      char path[PATH_MAX];
+      make_path(pages_[entries_[entry_id].page_ids[page_index]].file_id, path);
+      int fd = open(path, O_RDWR);
+      void* ret_p = mmap(p, kPageSize, PROT_READ | PROT_WRITE,
+                       MAP_SHARED | MAP_FIXED, fd, 0);
+      close(fd);
+      p = (void*)((size_t)p + kPageSize);
     }
-    return page_adjustment(entry_id, expect_num_pages);
+  }
+  else{//delete
+    data_ptr = ptr;
+    ptr = (void*)((size_t)ptr + expect_num_pages * kPageSize);
+    for(size_t page_index = expect_num_pages; page_index < old_num_pages; page_index++){//delete unused map, ummap
+      munmap(ptr, kPageSize);
+      ptr = (void*)((size_t)ptr + kPageSize);
+      pages_[entries_[entry_id].page_ids[page_index]].in_use = false;
+    }
+    auto it = entries_[entry_id].page_ids.begin();
+    entries_[entry_id].page_ids.erase(it + expect_num_pages, it + old_num_pages);
   }
 
-  bool HugeTLBFS_SHM::page_adjustment(size_t entry_id, size_t expect_num_pages){
-     /*
-      * @Author: Huijuan Xiao
-      * @Description: TODO: Implement.
-      * To increase the pages, take up the hugepages from the system and mmap it to the entry.
-      * To reduce the pages, unmap the corresponding pages from the entry. 
-      */
-    entries_[entry_id].num_pages_occupied = expect_num_pages;
-    unlock();
-    return true;
-  }
+  mappings_[entry_id].addr = data_ptr;
+  mappings_[entry_id].length = expect_length;
+  mappings_[entry_id].num_pages = expect_num_pages;
+
+  entries_[entry_id].num_pages_occupied = expect_num_pages;
+  entries_[entry_id].num_pages = expect_num_pages;
+  entries_[entry_id].length = expect_length;
+
+  unlock();
+  return data_ptr;
+}
+
 }
 }
 

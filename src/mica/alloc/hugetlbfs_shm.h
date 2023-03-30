@@ -69,8 +69,8 @@ class HugeTLBFS_SHM {
  * @Author: Huijuan Xiao
  * @Description:  TODO:add api to adjust the memory of the specific entry
  */
-  bool memory_adjustment(size_t entry_id, size_t expected_size);
-  bool page_adjustment(size_t entry_id ,size_t expect_page);
+  void* memory_adjustment(size_t entry_id, size_t expected_size, void* ptr);
+  void* page_adjustment(size_t entry_id, size_t expect_size, void* ptr);
  private:
   void initialize();
 
@@ -98,7 +98,7 @@ class HugeTLBFS_SHM {
   struct Entry {
     size_t refcount;  // reference by mapping
     bool to_remove;   // remove entry when refcount == 0
-    size_t length;
+    size_t length;    //size of log
     size_t num_pages;
    /*
    * @Author: Huijuan Xiao

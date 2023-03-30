@@ -1,7 +1,7 @@
 #ifndef _EAET_H
 #define _EAET_H
 
-#include<bits/stdint-uintn.h>
+#include<stdlib.h>
 #include<cstring>
 
 namespace mica{

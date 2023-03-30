@@ -51,8 +51,8 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
 
   assert(concurrent_access_mode_ == 0);
   init_size = size;
-  size_ = size / 2;
-  printf("init size=%lu\n", size_);
+  size_ = size / 8;
+  //printf("init size=%lu\n", size_);
   mask_ = size - 1;
 
   lock_ = 0;
@@ -63,7 +63,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
 
   timewatcher.init_start();
   wait_interval = 1;
-  log_adjust_interval = 3;
+  log_adjust_interval = 5;
   next_adjust_time = log_adjust_interval + wait_interval;
   timewatcher.init_end();
   firsttime = timewatcher.now();
@@ -82,7 +82,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
     static_cast<uint64_t>(static_cast<double>(size_) * ma_thres);
 
   //size_t alloc_id = alloc_->alloc(size + kWrapAroundSize, numa_node);
-  size_t alloc_id = alloc_->alloc(size, numa_node);
+  size_t alloc_id = alloc_->alloc(size_, numa_node);
   entry_id_ = alloc_id;
   if (alloc_id == Alloc::kInvalidId) {
     fprintf(stderr, "error: failed to allocate memory\n");
@@ -92,7 +92,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   while (true) {
     /*data_ = reinterpret_cast<char*>(
         alloc->find_free_address(size + kWrapAroundSize));*/
-    data_ = reinterpret_cast<char*>(alloc->find_free_address(size));
+    data_ = reinterpret_cast<char*>(alloc->find_free_address(size_));
     /*
     * @Author: Huijuan Xiao
     * @Description: this size is the upper memory limit of the log
@@ -103,7 +103,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
       return;
     }
     //if (!alloc_->map(alloc_id, data_, 0, size_ + kWrapAroundSize)) {
-    if (!alloc_->map(alloc_id, data_, 0, init_size)) {
+    if (!alloc_->map(alloc_id, data_, 0, size_)) {
       alloc_->unmap(data_);
       // TODO: Give up after some trials.
       continue;
@@ -517,7 +517,8 @@ void CircularLog<StaticConfig>::log_resizing(){
         update_log_parameter();
       }
     }else if(new_log_size_ > size_){
-      if(!alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_)){
+      data_ = reinterpret_cast<char*>(alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_, data_));
+      if(data_ == nullptr){
         printf("size: %zu\n", new_log_size_);
         fprintf(stderr, "error: failed to adjustment log memory\n");
         assert(false);
@@ -526,7 +527,8 @@ void CircularLog<StaticConfig>::log_resizing(){
     }else{//new_log_size_ < size_
       if(tail_ <= new_log_size_){
         if(new_log_size_ - tail_ < kMinimumSize){//tail写到new log size再调
-          if(!alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_)){
+          data_ = reinterpret_cast<char*>(alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_, data_));
+          if(data_ == nullptr){
             fprintf(stderr, "error: failed to adjustment log memory\n");
             assert(false);
           }
@@ -535,7 +537,8 @@ void CircularLog<StaticConfig>::log_resizing(){
         }
       }else{//tail > new log size
         new_log_size_ = ::mica::util::roundup<2 * 1048576>(tail_);
-        if(!alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_)){
+        data_ = reinterpret_cast<char*>(alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_, data_));
+        if(data_ == nullptr){
           fprintf(stderr, "error: failed to adjustment log memory\n");
           assert(false);
         } 

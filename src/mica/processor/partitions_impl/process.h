@@ -169,8 +169,8 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
               ra.set_out_value_length(index, out_value_length);
             }
             else{//kgetnotfound, reset_item
-              size_t reload_value_length_ = 8;
-              if(ra.get_key(index)[7] == 1) reload_value_length_ = 16;
+              size_t reload_value_length_ = 16;
+              if(ra.get_key(index)[7] % 2 == 0) reload_value_length_ = 8;
               char reload_value_[reload_value_length_];
               memset(reload_value_, 128, sizeof(char)*reload_value_length_);
               result = table->reset_item(key_hash, ra.get_key(index),ra.get_key_length(index), reload_value_,

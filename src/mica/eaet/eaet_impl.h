@@ -378,13 +378,16 @@ uint64_t supplement_of_stage_two(rthRec *rth, uint64_t tmpsize, size_t tenant_id
 
     total_avg_reuse /= total_hash_size;
     printf("lcore%u tenant%u\ttotal avg reuse=%lf\tmy hash size=%lu\teaet size=%lu\n", lcore_id, tenant_id, total_avg_reuse, total_hash_size, tmpsize);*/
-    std::vector<uint32_t> access_time_vec;
+    uint32_t heap[30] = {0};
     for(size_t bucket_index = 0; bucket_index < rth->timehash.num_buckets_; bucket_index++){
         for(size_t item_index = 0; item_index < item_number; item_index++){
             STable::aet_item tmp_item = rth->timehash.buckets_[bucket_index].item_vec[item_index];
             if(tmp_item.keyhash != 0){
                 double avg_reuse = tmp_item.total_reuse_time / tmp_item.total_access_time;
-                access_time_vec.push_back(tmp_item.total_access_time);
+                if(tmp_item.total_access_time > heap[0]){
+                    heap[0] = tmp_item.total_access_time;
+                    uptodown(heap, 30, 0);
+                }
                 if(avg_reuse <= threshold){//0~0.5
                     double tmpreuse = avg_reuse;
                     if(tmpreuse == 0) continue;
@@ -405,12 +408,8 @@ uint64_t supplement_of_stage_two(rthRec *rth, uint64_t tmpsize, size_t tenant_id
     coef = coef / (lower_thresh + between);
 
     uint64_t bias = tmpsize * coef;
-    std::vector<uint32_t> sorted_access_time = GetMaxNumbers(access_time_vec, 30);//to do
-    uint32_t sorted_vec[30];
-    for(int i = 0; i < 30; i++){
-        sorted_vec[i] = sorted_access_time[i];
-    } 
-    *out_theta = skewEstimation(sorted_vec, 30);
+    std::sort(heap, heap + 30, std::greater<int>());
+    *out_theta = skewEstimation(heap, 30);
     //printf("lcore%u tenant%u\teaet size=%lu\tbias=%lu\n", lcore_id, tenant_id, tmpsize, bias);
 
     return bias;

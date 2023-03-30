@@ -4,6 +4,7 @@
 #include "mica/eaet/eaet.h"
 #include "sys/time.h"
 #include "mica/datagram/mlp.h"
+#include "mica/datagram/rfr.h"
 
 #define BLUE         "\033[0;32;34m"
 #define RED          "\033[0;32;31m"
@@ -142,7 +143,7 @@ void DatagramServer<StaticConfig>::run() {
   size_t table_count = processor_->get_table_count();
   for (uint16_t lcore_id = 1; lcore_id < lcore_count; lcore_id++) {
     if (!rte_lcore_is_enabled(static_cast<uint8_t>(lcore_id))) continue;
-    if(lcore_id == table_count){
+    if(lcore_id == 2 * table_count){
       rte_eal_remote_launch(clean_up_worker_proc_wrapper, &args[lcore_id], lcore_id);
       continue;
     }
@@ -602,7 +603,8 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     
     double infos[5] = {theta, get_ratio, avg_key_length, avg_value_length, tput};
     double cpu_usage = 0;
-    MultilayerPerceptron(infos, 5, &cpu_usage);
+    //MultilayerPerceptron(infos, 5, &cpu_usage);
+    randomForestRegression(infos, 5, &cpu_usage);
 
     ::mica::pool::hit_rate_diff[tenant_id] = hit_rate - ::mica::pool::last_hit_rate[tenant_id];
     ::mica::pool::last_hit_rate[tenant_id] = hit_rate;
