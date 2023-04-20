@@ -2,6 +2,7 @@
 #ifndef MICA_TABLE_LTABLE_IMPL_SET_H_
 #define MICA_TABLE_LTABLE_IMPL_SET_H_
 #include "mica/util/lcore.h"
+#include<cassert>
 namespace mica {
 namespace table {
 template <class StaticConfig>
@@ -14,7 +15,11 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
 
   uint32_t bucket_index = calc_bucket_index(key_hash);
   uint8_t tenant_id = calc_tenant_id(key);
-  //printf("tenant%d in set!\n", tenant_id);
+  if(tenant_id >= kTenantCount){
+    printf("Too many tenants!\n");
+    exit(EXIT_FAILURE);
+  }
+  //printf("tenant%d in set! total tenant=%d lcore=%d\n", tenant_id, kTenantCount, ::mica::util::lcore.lcore_id());
   Pool* pool_ = pools_[tenant_id];
   uint16_t tag = calc_tag(key_hash);
 
@@ -191,6 +196,10 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
 
   uint32_t bucket_index = calc_bucket_index(key_hash);
   uint8_t tenant_id = calc_tenant_id(key);
+  if(tenant_id >= kTenantCount){
+    printf("Too many tenants!\n");
+    exit(EXIT_FAILURE);
+  }
   //printf("tenant%d in set!\n", tenant_id);
   Pool* pool_ = pools_[tenant_id];
   uint16_t tag = calc_tag(key_hash);

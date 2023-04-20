@@ -16,7 +16,7 @@ namespace eaet{
 
 STable::STable()
 {
-    size_t num_buckets = 1048576;// 65536;
+    size_t num_buckets = 48 * 1048576UL;// 65536;
     num_buckets_ = (uint64_t)num_buckets;
     num_buckets_mask_ = (uint64_t)(num_buckets - 1);
 
@@ -248,12 +248,14 @@ uint64_t get_eaet_size(rthRec *rth, uint64_t total_memory, uint64_t step, double
 
     return size;
 }
-
-uint64_t need_sample_mask = (uint64_t(1) << 16) - 1;//2^17 - 1(128 * 1024 - 1)
+int sample_rate_index = 0;
+uint64_t need_sample_mask = (uint64_t(1) << 17) - 1;//2^17 - 1(128 * 1024 - 1)
 uint64_t need_sample_comp = 1024;
+uint64_t need_sample_masks[7] = {(uint64_t(1) << 10) - 1, (uint64_t(1) << 13) - 1, (uint64_t(1) << 15) - 1,
+                                (uint64_t(1) << 16) - 1, (uint64_t(1) << 17) - 1, (uint64_t(1) << 18) - 1, (uint64_t(1) << 20) - 1};
 
 bool set_sampling(uint64_t keyhash){
-    return ((keyhash & need_sample_mask) < need_sample_comp);
+    return ((keyhash & need_sample_masks[sample_rate_index]) < need_sample_comp);
 }
 
 void setStatistics(rthRec *rth, uint64_t keyhash, uint64_t size, bool isGet){

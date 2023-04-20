@@ -104,8 +104,9 @@ void Partitions<StaticConfig>::initialize() {
 
     owner_lcore_ids_[i] = current_lcore_id;
     //pools_[i] = new Pool(pool_config, alloc_);
+    printf("start init partition%d\n", i);
     tables_[i] = new Table(table_config, alloc_, size_per_table_);
-
+    printf("finish init partition%d\n", i);
     if (StaticConfig::kVerbose) {
       printf("= Partition %zu at lcore %hu\n", i, current_lcore_id);
       printf("== Pool config\n");

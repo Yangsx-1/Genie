@@ -705,6 +705,13 @@ uint16_t DPDK<StaticConfig>::receive(EndpointId eid, PacketBuffer** bufs,
   //if(rx_packets != 0) printf("queue %hu received %hu packets\n",queue_id , rx_packets);//xhj
   ei.rx_bursts++;
   ei.rx_packets += rx_packets;
+  
+  uint64_t packet_size = 0;
+  for(int i = 0; i < rx_packets; ++i){
+    packet_size += bufs[i]->get_packet_length() + sizeof(struct rte_udp_hdr);
+  }
+  //printf("%d %d\n", bufs[0]->get_length(), count);
+  ei.rx_packet_size += packet_size;
   return rx_packets;
 }
 
@@ -722,6 +729,13 @@ uint16_t DPDK<StaticConfig>::send(EndpointId eid, PacketBuffer** bufs,
   uint16_t tx_packets =
       rte_eth_tx_burst(static_cast<uint8_t>(port_id), queue_id,
                        reinterpret_cast<rte_mbuf**>(bufs), buf_count);
+    
+  uint64_t packet_size = 0;
+  for(int i = 0; i < tx_packets; ++i){
+    packet_size += bufs[i]->get_packet_length() + sizeof(struct rte_udp_hdr);
+  }
+  //printf("%d %d\n", bufs[0]->get_length(), count);
+  ei.tx_packet_size += packet_size;
   //if(tx_packets != 0) printf("queue %hu sended %hu packets\n",queue_id , tx_packets);//xhj
   /*
   TODO: print the udp port and the mac ip address

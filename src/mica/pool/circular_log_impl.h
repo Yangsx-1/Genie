@@ -51,8 +51,8 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
 
   assert(concurrent_access_mode_ == 0);
   init_size = size;
-  size_ = size / 8;
-  //printf("init size=%lu\n", size_);
+  size_ = size / 2;
+  printf("tenant%d init size=%lu\n", tenant_id_, size_);
   mask_ = size - 1;
 
   lock_ = 0;
@@ -62,7 +62,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   wrap_around_number_ = 0;
 
   timewatcher.init_start();
-  wait_interval = 1;
+  wait_interval = 10;
   log_adjust_interval = 5;
   next_adjust_time = log_adjust_interval + wait_interval;
   timewatcher.init_end();
@@ -428,7 +428,7 @@ uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* o
   uint64_t eaet_log_size = 0;
   uint64_t msize = 1024 * 1024;
   double upper_error = 0.03;
-  if(target_diff < -upper_error || target_diff > 0){//误差较大或没达到命中率
+  //if(target_diff < -upper_error || target_diff > 0){//误差较大或没达到命中率
     uint64_t granularity_size = 2 * msize; //2M
     uint64_t max_memory = init_size;//4G
     rthCalcMRC(rth, max_memory, granularity_size);
@@ -437,10 +437,10 @@ uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* o
     uint64_t bias2 = supplement_of_stage_two(rth, tmpsize + bias1, tenant_id_, out_theta);//second bias
     eaet_log_size = tmpsize + bias2;// eaet + second bias
     printf(YELLOW"lcore%ld tenant%d using EAET log size:%lu\n"NONE, local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(eaet_log_size));
-  }else{//误差小不需要调
-    eaet_log_size = get_size();
-    printf(YELLOW"lcore%ld tenant%d workload not shift! maintaining old size!\n"NONE, local_id, tenant_id_);
-  }
+  //}else{//误差小不需要调
+  //  eaet_log_size = get_size();
+  //  printf(YELLOW"lcore%ld tenant%d workload not shift! maintaining old size!\n"NONE, local_id, tenant_id_);
+  //}
   if(eaet_log_size > init_size){
     eaet_log_size = init_size;
   }

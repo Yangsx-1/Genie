@@ -28,7 +28,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
       0x10000;  // Must be a power of two.
 
   uint16_t partition_ids[pipeline_size];
-
+  //uint64_t sampling_times[8][8];
   // The maximum requests to handle at once.
   uint64_t count = static_cast<uint64_t>(static_cast<uint32_t>(-1));
   uint64_t count_plus_gap = count;
@@ -39,7 +39,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
   // using "index < count".
   for (uint64_t i_ = 0; i_ < count_plus_gap; i_++) {
     uint64_t index = i_;
-
+    //uint64_t time1 = ::mica::util::rdtsc();
     if (StaticConfig::kVerbose)
       printf("lcore %2" PRIu16 ": [0] i_ %" PRIu64 ", index %" PRIu64
              ", count %" PRIu64 ", count_plus_gap %" PRIu64 "\n",
@@ -57,12 +57,15 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
       }
     }
     index -= stage_gap;
+    //uint64_t time2 = ::mica::util::rdtsc();
+    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += time2 - time1;
+
 
     if (StaticConfig::kVerbose)
       printf("lcore %2" PRIu16 ": [1] i_ %" PRIu64 ", index %" PRIu64
              ", count %" PRIu64 ", count_plus_gap %" PRIu64 "\n",
              lcore_id, i_, index, count, count_plus_gap);
-
+    //uint64_t time3 = ::mica::util::rdtsc();
     if (index < count) {
       auto key_hash = ra.get_key_hash(index);
       auto partition_id = get_partition_id(key_hash);
@@ -80,12 +83,13 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
       }
     }
     index -= stage_gap;
-
+    //uint64_t time4 = ::mica::util::rdtsc();
+    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += time4 - time3;
     if (StaticConfig::kVerbose)
       printf("lcore %2" PRIu16 ": [2] i_ %" PRIu64 ", index %" PRIu64
              ", count %" PRIu64 ", count_plus_gap %" PRIu64 "\n",
              lcore_id, i_, index, count, count_plus_gap);
-
+    //uint64_t time5 = ::mica::util::rdtsc();
     if (index < count) {
       if (StaticConfig::kPrefetchPool) {
         if (StaticConfig::kVerbose)
@@ -102,12 +106,13 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
       }
     }
     index -= stage_gap;
-
+    //uint64_t time6 = ::mica::util::rdtsc();
+    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += time6 - time5;
     if (StaticConfig::kVerbose)
       printf("lcore %2" PRIu16 ": [3] i_ %" PRIu64 ", index %" PRIu64
              ", count %" PRIu64 ", count_plus_gap %" PRIu64 "\n",
              lcore_id, i_, index, count, count_plus_gap);
-
+    //uint64_t time7 = ::mica::util::rdtsc();
     if (index < count) {
       if (StaticConfig::kVerbose)
         printf("lcore %2" PRIu16 ": process index %" PRIu64 ", count %" PRIu64
@@ -169,8 +174,9 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
               ra.set_out_value_length(index, out_value_length);
             }
             else{//kgetnotfound, reset_item
-              size_t reload_value_length_ = 16;
-              if(ra.get_key(index)[7] % 2 == 0) reload_value_length_ = 8;
+              uint8_t tenant_id = table->calc_tenant_id(ra.get_key(index));
+              size_t reload_value_length_ = std::max(8.0, avg_value_length[tenant_id]);
+              //size_t reload_value_length_ = 8;
               char reload_value_[reload_value_length_];
               memset(reload_value_, 128, sizeof(char)*reload_value_length_);
               result = table->reset_item(key_hash, ra.get_key(index),ra.get_key_length(index), reload_value_,
@@ -224,7 +230,8 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
         }
       }
     }
-
+    //uint64_t time8 = ::mica::util::rdtsc();
+    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += time8 - time7;
     if (StaticConfig::kVerbose)
       printf("lcore %2" PRIu16 ": [4] i_ %" PRIu64 ", index %" PRIu64
              ", count %" PRIu64 ", count_plus_gap %" PRIu64 "\n",

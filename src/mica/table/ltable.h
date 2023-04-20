@@ -122,6 +122,7 @@ class LTable : public TableInterface {
   void set_tenant_value_size(uint8_t tenant_id, double value_size);
   void set_tenant_tput(uint8_t tenant_id, double tput);
   void set_tenant_theta(uint8_t tenant_id, double theta);*/
+  static uint8_t calc_tenant_id(const char* key);
 
   //ltable_impl/bucket.h
   uint32_t get_bucket_mask();
@@ -248,7 +249,7 @@ class LTable : public TableInterface {
   static uint32_t make_kv_length_vec(uint32_t key_length,
                                      uint32_t value_length);
   static uint16_t calc_tag(uint64_t key_hash);
-  static uint8_t calc_tenant_id(const char* key);
+  
   static void set_item(Item* item, uint64_t key_hash, const char* key,
                        uint32_t key_length, const char* value,
                        uint32_t value_length);

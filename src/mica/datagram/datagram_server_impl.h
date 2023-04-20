@@ -129,6 +129,7 @@ void DatagramServer<StaticConfig>::run() {
   stopping_ = false;
   dir_client_->register_server(server_info_.c_str());
   directory_thread_ = std::thread(directory_proc_wrapper, this);
+  clean_up_thread_ = std::thread(clean_up_worker_proc_wrapper, this);
 
   reset_status();
   //reset_tenant_status();
@@ -143,10 +144,10 @@ void DatagramServer<StaticConfig>::run() {
   size_t table_count = processor_->get_table_count();
   for (uint16_t lcore_id = 1; lcore_id < lcore_count; lcore_id++) {
     if (!rte_lcore_is_enabled(static_cast<uint8_t>(lcore_id))) continue;
-    if(lcore_id == 2 * table_count){
-      rte_eal_remote_launch(clean_up_worker_proc_wrapper, &args[lcore_id], lcore_id);
-      continue;
-    }
+    // if(rte_get_next_lcore(lcore_id, true, false) == RTE_MAX_LCORE){
+    //   rte_eal_remote_launch(clean_up_worker_proc_wrapper, &args[lcore_id], lcore_id);
+    //   break;
+    // }
     rte_eal_remote_launch(worker_proc_wrapper, &args[lcore_id], lcore_id);
   }
   worker_proc_wrapper(&args[0]);
@@ -173,7 +174,7 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
   ::mica::util::lcore.pin_thread(lcore_id);
 
   printf("worker running on lcore %" PRIu16 "\n", lcore_id);
-
+  uint64_t core0_start_time = stopwatch_.now();
   // Find endpoints owned by this lcore.
   std::vector<EndpointId> my_eids;
   {
@@ -250,6 +251,12 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
       double time_diff = stopwatch_.diff(now, last_status_report);
       if (time_diff >= 1.) {
         last_status_report = now;
+        double running_time = stopwatch_.diff(now, core0_start_time);
+        printf("Now running time is %.4lf sec / %.4lf min\n", running_time, running_time / 60.0);
+        if(running_time > 600){
+          printf("Running over!\n");
+          exit(0);
+        } 
         report_status(time_diff);
         report_tenant_status(time_diff);
       }
@@ -266,12 +273,12 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
 
 template <class StaticConfig>
 int DatagramServer<StaticConfig>::clean_up_worker_proc_wrapper(void* arg) {
-  auto v =
-      reinterpret_cast<std::pair<DatagramServer<StaticConfig>*, uint16_t>*>(
-          arg);
-  v->first->clean_up_worker(v->second);
-  //auto server = reinterpret_cast<DatagramServer<StaticConfig>*>(arg);
-  //server->clean_up_worker(0);
+  // auto v =
+  //     reinterpret_cast<std::pair<DatagramServer<StaticConfig>*, uint16_t>*>(
+  //         arg);
+  // v->first->clean_up_worker(v->second);
+  auto server = reinterpret_cast<DatagramServer<StaticConfig>*>(arg);
+  server->clean_up_worker(0);
   return 0;
 }
 
@@ -314,7 +321,7 @@ void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id){
   uint64_t time_count = 0;
   
   while(true){
-    //sleep(1);
+    sleep(1);
     //time_count++;
     //if(!(time_count & eaet_calculation_mask)) check_memory_resizing();
     check_memory_resizing();
@@ -419,6 +426,8 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
   uint64_t tx_bursts = 0;
   uint64_t tx_packets = 0;
   uint64_t tx_dropped = 0;
+  uint64_t rx_packet_size = 0;
+  uint64_t tx_packet_size = 0;
 
   for (size_t lcore_id = 0; lcore_id < ::mica::util::lcore.lcore_count();
        lcore_id++) {
@@ -487,6 +496,18 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
       tx_dropped += v - last_v;
       last_v = v;
     }
+    {
+      uint64_t v = ei.rx_packet_size;
+      uint64_t& last_v = endpoint_stats_[eid].last_rx_packet_size;
+      rx_packet_size += v - last_v;
+      last_v = v;
+    }
+    {
+      uint64_t v = ei.tx_packet_size;
+      uint64_t& last_v = endpoint_stats_[eid].last_tx_packet_size;
+      tx_packet_size += v - last_v;
+      last_v = v;
+    }
   }
 
   time_diff = std::max(0.01, time_diff);
@@ -498,6 +519,10 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
   double hit_rate =
       static_cast<double>(total_get_succeeded) /
       static_cast<double>(std::max(total_get_done, uint64_t(1)));
+
+  // double avg_packet_size = 
+  //     static_cast<double>(total_packet_size) /
+  //     static_cast<double>(std::max(rx_packets, uint64_t(1)));
 
   printf("tput=%7.3lf Mops",
          static_cast<double>(total_operations_done) / time_diff / 1000000.);
@@ -513,6 +538,11 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
              static_cast<double>(std::max(tx_bursts, uint64_t(1))));
   printf(", TX_drop=%7.3lf Mpps",
          static_cast<double>(tx_dropped) / time_diff / 1000000.);
+  //printf(", avg_packet_size=%7.3lf Byte", avg_packet_size);
+  printf(", RX_speed=%7.3lf Gbps", 
+         static_cast<double>(rx_packet_size) * 8 / 1024 / 1024 / 1024);
+  printf(", TX_speed=%7.3lf Gbps",
+         static_cast<double>(tx_packet_size) * 8 / 1024 / 1024 / 1024);
   printf(", threads=%2" PRIu64 "/%2zu", total_alive,
          ::mica::util::lcore.lcore_count());
 
@@ -595,6 +625,7 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
 
     double avg_value_length = static_cast<double>(total_value_length) /
         static_cast<double>(std::max(total_operations_done - total_get_operations_done, uint64_t(1)));
+    this->processor_->avg_value_length[tenant_id] = avg_value_length;
 
     double tput = static_cast<double>(total_operations_done) / time_diff / 1000000.;
 
@@ -603,8 +634,8 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     
     double infos[5] = {theta, get_ratio, avg_key_length, avg_value_length, tput};
     double cpu_usage = 0;
-    //MultilayerPerceptron(infos, 5, &cpu_usage);
-    randomForestRegression(infos, 5, &cpu_usage);
+    MultilayerPerceptron(infos, 5, &cpu_usage);
+    //randomForestRegression(infos, 5, &cpu_usage);
 
     ::mica::pool::hit_rate_diff[tenant_id] = hit_rate - ::mica::pool::last_hit_rate[tenant_id];
     ::mica::pool::last_hit_rate[tenant_id] = hit_rate;
@@ -700,6 +731,12 @@ const char* DatagramServer<StaticConfig>::RequestAccessor::get_key(
 }
 
 template <class StaticConfig>
+uint8_t DatagramServer<StaticConfig>::RequestAccessor::get_tenant_id(
+    size_t index) {
+  return static_cast<uint8_t>(get_key(index)[7]);
+}
+
+template <class StaticConfig>
 size_t DatagramServer<StaticConfig>::RequestAccessor::get_key_length(
     size_t index) {
   assert(index >= next_index_to_retire_);
@@ -766,7 +803,7 @@ uint32_t DatagramServer<StaticConfig>::RequestAccessor::get_opaque(
 template <class StaticConfig>
 void DatagramServer<StaticConfig>::RequestAccessor::retire(size_t index) {
   assert(index == next_index_to_retire_);
-  uint8_t tenant_id = static_cast<uint8_t>(this->get_key(index)[7]);
+  uint8_t tenant_id = get_tenant_id(index);
   if (StaticConfig::kVerbose)
     printf("lcore %2zu: retire: %zu\n", ::mica::util::lcore.lcore_id(), index);
 

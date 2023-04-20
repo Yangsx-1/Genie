@@ -21,11 +21,12 @@ struct DatagramServerConfig
 typedef ::mica::datagram::DatagramServer<DatagramServerConfig> Server;
 
 int main(int argc, const char* argv[]) {
-  if(argc != 2){
-    printf("%s NEED TARGET HIT RATIO\n", argv[0]);
+  if(argc != 3){
+    printf("%s NEED TARGET HIT RATIO AND SAMPLE RATE\n", argv[0]);
     return EXIT_FAILURE;
   }
   ::mica::pool::target_hit_ratio = atof(argv[1]);
+  ::mica::eaet::sample_rate_index = atoi(argv[2]);
   
   ::mica::util::lcore.pin_thread(0);
 

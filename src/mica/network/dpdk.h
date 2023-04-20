@@ -68,6 +68,7 @@ class DPDK : public PacketIOInterface {
   struct PacketBuffer : public rte_mbuf {
    public:
     uint16_t get_length() const { return rte_pktmbuf_data_len(this); }
+    uint16_t get_packet_length() const { return rte_pktmbuf_pkt_len(this); }
     uint16_t get_headroom() const { return rte_pktmbuf_headroom(this); }
     uint16_t get_tailroom() const { return rte_pktmbuf_tailroom(this); }
 
@@ -104,7 +105,8 @@ class DPDK : public PacketIOInterface {
     volatile uint64_t tx_bursts;
     volatile uint64_t tx_packets;
     volatile uint64_t tx_dropped;
-
+    volatile uint64_t rx_packet_size;
+    volatile uint64_t tx_packet_size;
     // Specific to DPDK.
     // Values copied from Port.
     rte_ether_addr mac_addr;

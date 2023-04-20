@@ -141,6 +141,8 @@ class DatagramServer {
     uint64_t last_tx_bursts;
     uint64_t last_tx_packets;
     uint64_t last_tx_dropped;
+    uint64_t last_rx_packet_size;
+    uint64_t last_tx_packet_size;
   };
 
   struct tenant_info{
@@ -190,6 +192,7 @@ class DatagramServer {
     Operation get_operation(size_t index);
     uint64_t get_key_hash(size_t index);
     const char* get_key(size_t index);
+    uint8_t get_tenant_id(size_t index);
     size_t get_key_length(size_t index);
     const char* get_value(size_t index);
     size_t get_value_length(size_t index);
@@ -263,6 +266,7 @@ class DatagramServer {
 
   std::string server_info_;
   std::thread directory_thread_;
+  std::thread clean_up_thread_;
   volatile bool stopping_;
 
   // Padding to separate static and dynamic fields.

@@ -1063,6 +1063,7 @@ void* HugeTLBFS_SHM::page_adjustment(size_t entry_id, size_t expect_length, void
     data_ptr = ptr;
     ptr = (void*)((size_t)ptr + expect_num_pages * kPageSize);
     for(size_t page_index = expect_num_pages; page_index < old_num_pages; page_index++){//delete unused map, ummap
+      memset(ptr, 0, kPageSize);
       munmap(ptr, kPageSize);
       ptr = (void*)((size_t)ptr + kPageSize);
       pages_[entries_[entry_id].page_ids[page_index]].in_use = false;
