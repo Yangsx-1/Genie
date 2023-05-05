@@ -101,6 +101,7 @@ void HugeTLBFS_SHM::dump_page_info() {
 
 HugeTLBFS_SHM::HugeTLBFS_SHM(const ::mica::util::Config& config)
     : config_(config) {
+  printf("Start alloc...\n");
   // Parse the configuration.
   hugetlbfs_path_ = config.get("hugetlbfs_path").get_str("/mnt/huge");
   filename_prefix_ = config.get("filename_prefix").get_str("mica_shm_");

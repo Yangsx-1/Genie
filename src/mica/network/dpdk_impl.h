@@ -7,6 +7,7 @@ namespace network {
 template <class StaticConfig>
 DPDK<StaticConfig>::DPDK(const ::mica::util::Config& config)
     : config_(config), rte_argc_(0), endpoint_count_(0), started_(false) {
+  printf("Start init network...\n");
   for (uint16_t numa_id = 0; numa_id < StaticConfig::kMaxNUMACount; numa_id++)
     mempools_[numa_id] = nullptr;
 

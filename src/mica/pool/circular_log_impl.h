@@ -52,7 +52,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   assert(concurrent_access_mode_ == 0);
   init_size = size;
   size_ = size / 2;
-  printf("tenant%d init size=%lu\n", tenant_id_, size_);
+  //printf("tenant%d init size=%lu\n", tenant_id_, size_);
   mask_ = size - 1;
 
   lock_ = 0;

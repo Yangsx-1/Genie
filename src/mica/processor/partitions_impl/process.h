@@ -6,6 +6,10 @@
 
 namespace mica {
 namespace processor {
+// double diff_in_sec(uint64_t new_t, uint64_t old_t){
+//   return static_cast<double>(new_t - old_t) /
+//           static_cast<double>(2097582670);
+// }
 template <class StaticConfig>
 template <class RequestAccessor>
 void Partitions<StaticConfig>::process(RequestAccessor& ra) {
@@ -28,7 +32,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
       0x10000;  // Must be a power of two.
 
   uint16_t partition_ids[pipeline_size];
-  //uint64_t sampling_times[8][8];
+  //uint64_t sampling_times[16][16];
   // The maximum requests to handle at once.
   uint64_t count = static_cast<uint64_t>(static_cast<uint32_t>(-1));
   uint64_t count_plus_gap = count;
@@ -58,7 +62,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
     }
     index -= stage_gap;
     //uint64_t time2 = ::mica::util::rdtsc();
-    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += time2 - time1;
+    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += diff_in_sec(time2 ,time1);
 
 
     if (StaticConfig::kVerbose)
@@ -84,7 +88,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
     }
     index -= stage_gap;
     //uint64_t time4 = ::mica::util::rdtsc();
-    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += time4 - time3;
+    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += diff_in_sec(time4 ,time3);
     if (StaticConfig::kVerbose)
       printf("lcore %2" PRIu16 ": [2] i_ %" PRIu64 ", index %" PRIu64
              ", count %" PRIu64 ", count_plus_gap %" PRIu64 "\n",
@@ -107,7 +111,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
     }
     index -= stage_gap;
     //uint64_t time6 = ::mica::util::rdtsc();
-    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += time6 - time5;
+    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += diff_in_sec(time6 ,time5);
     if (StaticConfig::kVerbose)
       printf("lcore %2" PRIu16 ": [3] i_ %" PRIu64 ", index %" PRIu64
              ", count %" PRIu64 ", count_plus_gap %" PRIu64 "\n",
@@ -231,7 +235,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
       }
     }
     //uint64_t time8 = ::mica::util::rdtsc();
-    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += time8 - time7;
+    //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += diff_in_sec(time8 ,time7);
     if (StaticConfig::kVerbose)
       printf("lcore %2" PRIu16 ": [4] i_ %" PRIu64 ", index %" PRIu64
              ", count %" PRIu64 ", count_plus_gap %" PRIu64 "\n",
