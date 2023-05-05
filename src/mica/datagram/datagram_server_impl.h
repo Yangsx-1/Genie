@@ -540,9 +540,9 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
          static_cast<double>(tx_dropped) / time_diff / 1000000.);
   //printf(", avg_packet_size=%7.3lf Byte", avg_packet_size);
   printf(", RX_speed=%7.3lf Gbps", 
-         static_cast<double>(rx_packet_size) * 8 / 1024 / 1024 / 1024);
+         static_cast<double>(rx_packet_size) * 8 / 1024 / 1024 / 1024  / time_diff);
   printf(", TX_speed=%7.3lf Gbps",
-         static_cast<double>(tx_packet_size) * 8 / 1024 / 1024 / 1024);
+         static_cast<double>(tx_packet_size) * 8 / 1024 / 1024 / 1024  / time_diff);
   printf(", threads=%2" PRIu64 "/%2zu", total_alive,
          ::mica::util::lcore.lcore_count());
 

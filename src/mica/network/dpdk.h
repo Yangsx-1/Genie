@@ -68,7 +68,7 @@ class DPDK : public PacketIOInterface {
   struct PacketBuffer : public rte_mbuf {
    public:
     uint16_t get_length() const { return rte_pktmbuf_data_len(this); }
-    uint16_t get_packet_length() const { return rte_pktmbuf_pkt_len(this); }
+    uint32_t get_packet_length() const { return rte_pktmbuf_pkt_len(this); }
     uint16_t get_headroom() const { return rte_pktmbuf_headroom(this); }
     uint16_t get_tailroom() const { return rte_pktmbuf_tailroom(this); }
 

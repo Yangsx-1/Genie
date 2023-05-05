@@ -195,7 +195,7 @@ void DPDK<StaticConfig>::init_eal(uint64_t core_mask) {
   rte_argv_[rte_argc_++] = strdup("");
 
   char s_core_mask[1024];
-  snprintf(s_core_mask, sizeof(core_mask), "%" PRIx64 "", core_mask);
+  snprintf(s_core_mask, sizeof(core_mask) + 1, "%" PRIx64 "", core_mask);//need change sizeof(core_mask) + n to match the core number
   rte_argv_[rte_argc_++] = strdup("-c");
   rte_argv_[rte_argc_++] = strdup(s_core_mask);
 
@@ -708,7 +708,7 @@ uint16_t DPDK<StaticConfig>::receive(EndpointId eid, PacketBuffer** bufs,
   
   uint64_t packet_size = 0;
   for(int i = 0; i < rx_packets; ++i){
-    packet_size += bufs[i]->get_packet_length() + sizeof(struct rte_udp_hdr);
+    packet_size += bufs[i]->get_packet_length();
   }
   //printf("%d %d\n", bufs[0]->get_length(), count);
   ei.rx_packet_size += packet_size;
@@ -732,7 +732,7 @@ uint16_t DPDK<StaticConfig>::send(EndpointId eid, PacketBuffer** bufs,
     
   uint64_t packet_size = 0;
   for(int i = 0; i < tx_packets; ++i){
-    packet_size += bufs[i]->get_packet_length() + sizeof(struct rte_udp_hdr);
+    packet_size += bufs[i]->get_packet_length();
   }
   //printf("%d %d\n", bufs[0]->get_length(), count);
   ei.tx_packet_size += packet_size;
