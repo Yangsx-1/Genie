@@ -528,6 +528,10 @@ void CircularLog<StaticConfig>::log_resizing(){
       if(data_ != tmp_data_) update_log_size();
     }else{//new_log_size_ < size_
       if(tail_ <= new_log_size_){
+        /**
+         * @description: log size很大有可能会导致tail不会再往后写，如1/2 * logsize > working set size
+         * @author: yangsx
+         */
         if(new_log_size_ - tail_ < kMinimumSize){//tail写到new log size再调
           data_ = reinterpret_cast<char*>(alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_, data_));
           if(data_ == nullptr){
