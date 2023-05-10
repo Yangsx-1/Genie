@@ -50,7 +50,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
     concurrent_access_mode_ = 2;//cocurrent read and cocurrent write
 
   assert(concurrent_access_mode_ == 0);
-  init_size = size;
+  //init_size = size;
   size_ = size / 2;
   //printf("tenant%d init size=%lu\n", tenant_id_, size_);
   mask_ = size - 1;
@@ -62,7 +62,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   wrap_around_number_ = 0;
 
   timewatcher.init_start();
-  wait_interval = 10;
+  wait_interval = 10;//interval between two adjustments
   log_adjust_interval = 5;
   next_adjust_time = log_adjust_interval + wait_interval;
   timewatcher.init_end();
@@ -430,9 +430,10 @@ uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* o
   double upper_error = 0.03;
   //if(target_diff < -upper_error || target_diff > 0){//误差较大或没达到命中率
     uint64_t granularity_size = 2 * msize; //2M
-    uint64_t max_memory = init_size;//4G
+    uint64_t max_memory = max_virtual_space_size;//4G
     rthCalcMRC(rth, max_memory, granularity_size);
     uint64_t tmpsize = get_eaet_size(rth, max_memory, granularity_size, target_hit_ratio);//EAET size
+    printf(YELLOW"lcore%ld tenant%d origin EAET log size:%lu\n"NONE, local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(tmpsize));
     uint64_t bias1 = supplement_of_stage_one(rth, tmpsize, tenant_id_);//first bias
     uint64_t bias2 = supplement_of_stage_two(rth, tmpsize + bias1, tenant_id_, out_theta);//second bias
     eaet_log_size = tmpsize + bias2;// eaet + second bias
@@ -441,8 +442,8 @@ uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* o
   //  eaet_log_size = get_size();
   //  printf(YELLOW"lcore%ld tenant%d workload not shift! maintaining old size!\n"NONE, local_id, tenant_id_);
   //}
-  if(eaet_log_size > init_size){
-    eaet_log_size = init_size;
+  if(eaet_log_size > max_virtual_space_size){
+    eaet_log_size = max_virtual_space_size;
   }
   if(eaet_log_size < kAdjustMinimumSize) {
     eaet_log_size = kAdjustMinimumSize;
@@ -482,8 +483,8 @@ uint64_t CircularLog<StaticConfig>::fine_grained_adjustment(double diff_time){
       log_size = get_size();
     }
   }
-  if(log_size > init_size){
-    log_size = init_size;
+  if(log_size > max_virtual_space_size){
+    log_size = max_virtual_space_size;
   }
   if(log_size < kAdjustMinimumSize) {
     log_size = kAdjustMinimumSize;
@@ -517,13 +518,14 @@ void CircularLog<StaticConfig>::log_resizing(){
         update_log_parameter();
       }
     }else if(new_log_size_ > size_){
+      char* tmp_data_ = data_;
       data_ = reinterpret_cast<char*>(alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_, data_));
       if(data_ == nullptr){
         printf("size: %zu\n", new_log_size_);
         fprintf(stderr, "error: failed to adjustment log memory\n");
         assert(false);
       }
-      update_log_size();
+      if(data_ != tmp_data_) update_log_size();
     }else{//new_log_size_ < size_
       if(tail_ <= new_log_size_){
         if(new_log_size_ - tail_ < kMinimumSize){//tail写到new log size再调

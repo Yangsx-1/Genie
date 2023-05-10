@@ -71,6 +71,7 @@ class HugeTLBFS_SHM {
  */
   void* memory_adjustment(size_t entry_id, size_t expected_size, void* ptr);
   void* page_adjustment(size_t entry_id, size_t expect_size, void* ptr);
+  bool check_enough_free_page(size_t entry_id, size_t expect_pages);
  private:
   void initialize();
 

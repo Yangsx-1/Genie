@@ -16,7 +16,7 @@ namespace eaet{
 
 STable::STable()
 {
-    size_t num_buckets = 48 * 1048576UL;// 65536;
+    size_t num_buckets = 128 * 1048576UL;// 65536;
     num_buckets_ = (uint64_t)num_buckets;
     num_buckets_mask_ = (uint64_t)(num_buckets - 1);
 

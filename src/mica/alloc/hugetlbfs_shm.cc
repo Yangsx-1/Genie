@@ -1003,6 +1003,19 @@ void HugeTLBFS_SHM::free_striped(void* ptr) {
   }
 }
 
+bool HugeTLBFS_SHM::check_enough_free_page(size_t entry_id, size_t expect_pages){
+  size_t old_num_pages = entries_[entry_id].num_pages_occupied;
+  size_t num_allocated_pages = old_num_pages;
+  for (size_t page_id = 0; page_id < pages_.size(); page_id++) {//增加page
+    if (num_allocated_pages == expect_pages) break;
+    if (pages_[page_id].addr == nullptr) continue;
+    if (pages_[page_id].in_use) continue;
+    num_allocated_pages++;
+  }
+  if(num_allocated_pages == expect_pages) return true;
+  else return false;
+}
+
 void* HugeTLBFS_SHM::memory_adjustment(size_t entry_id, size_t expect_length, void* ptr){
   /*
   Try to adjust the memory of the specific entry
@@ -1014,11 +1027,11 @@ void* HugeTLBFS_SHM::memory_adjustment(size_t entry_id, size_t expect_length, vo
     fprintf(stderr, "error: invalid entry\n");
     assert(false);
   }
-  if(expect_length > entries_[entry_id].length || expect_length <= 0){
+  /*if(expect_length > entries_[entry_id].length || expect_length <= 0){
     unlock();
     fprintf(stderr, "error: invalid expected length");
     assert(false);
-  }
+  }*/
   
   return page_adjustment(entry_id, expect_length, ptr);
 }
@@ -1034,6 +1047,7 @@ void* HugeTLBFS_SHM::page_adjustment(size_t entry_id, size_t expect_length, void
   else if(expect_num_pages > old_num_pages){//add
     data_ptr = find_free_address(expect_length);
     if(data_ptr == nullptr) return ptr;
+    if(!check_enough_free_page(entry_id, expect_num_pages)) return ptr;
     for(size_t page_index = 0; page_index < old_num_pages; page_index++){//解绑
       munmap(ptr, kPageSize);
       ptr = (void*)((size_t)ptr + kPageSize);

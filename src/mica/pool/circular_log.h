@@ -150,7 +150,8 @@ class CircularLog : public PoolInterface {
   */
 
   uint64_t size_;  // a power of two
-  uint64_t init_size;
+  //uint64_t init_size;
+  static const uint64_t max_virtual_space_size = uint64_t(1) << 32;//4G
   uint64_t new_log_size_;
   uint64_t mth_thres_;
   uint64_t ma_thres_;
