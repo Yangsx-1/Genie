@@ -122,6 +122,7 @@ void DatagramServer<StaticConfig>::directory_proc() {
 
 template <class StaticConfig>
 void DatagramServer<StaticConfig>::run() {
+  core0_start_time = stopwatch_.now();
   // TODO: Implement a non-DPDK option.
   uint16_t lcore_count =
       static_cast<uint16_t>(::mica::util::lcore.lcore_count());
@@ -174,7 +175,7 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
   ::mica::util::lcore.pin_thread(lcore_id);
 
   printf("worker running on lcore %" PRIu16 "\n", lcore_id);
-  uint64_t core0_start_time = stopwatch_.now();
+  
   // Find endpoints owned by this lcore.
   std::vector<EndpointId> my_eids;
   {
@@ -548,6 +549,10 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
 
   printf("\n");
   if (flush_status_report_) fflush(stdout);
+  // if(hit_rate > 0.9){
+  //   printf("running over!\n");
+  //   exit(0);
+  // }
 }
 
 /*template <class StaticConfig>

@@ -1076,8 +1076,8 @@ void* HugeTLBFS_SHM::page_adjustment(size_t entry_id, size_t expect_length, void
   }
   else{//delete
     data_ptr = ptr;
-    ptr = (void*)((size_t)ptr + expect_num_pages * kPageSize);
-    for(size_t page_index = expect_num_pages; page_index < old_num_pages; page_index++){//delete unused map, ummap
+    ptr = (void*)((size_t)ptr + (expect_num_pages + 1) * kPageSize);
+    for(size_t page_index = expect_num_pages + 1; page_index < old_num_pages; page_index++){//delete unused map, ummap
       memset(ptr, 0, kPageSize);
       munmap(ptr, kPageSize);
       ptr = (void*)((size_t)ptr + kPageSize);

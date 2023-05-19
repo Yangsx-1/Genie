@@ -167,7 +167,7 @@ class LTable : public TableInterface {
     item == 0:empty item
     */
 
-    static constexpr uint64_t kTagMask = (uint64_t(1) << 16) - 1;
+    static constexpr uint64_t kTagMask = (uint64_t(1) << 8) - 1;
     //static constexpr uint64_t kWrapAroundMask = ((uint64_t(1) << 48) - 1) &(~((uint64_t(1) << 40) - 1));
     /*
      *@Author: Huijuan Xiao

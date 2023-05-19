@@ -256,6 +256,7 @@ class DatagramServer {
   };
 
   ::mica::util::Stopwatch stopwatch_;
+  uint64_t core0_start_time;
 
   uint32_t directory_refresh_interval_;
   uint16_t directory_refresh_lcore_;

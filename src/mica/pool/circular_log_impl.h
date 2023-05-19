@@ -51,7 +51,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
 
   assert(concurrent_access_mode_ == 0);
   //init_size = size;
-  size_ = size / 2;
+  size_ = size / 4;
   //printf("tenant%d init size=%lu\n", tenant_id_, size_);
   mask_ = size - 1;
 
@@ -63,7 +63,9 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
 
   timewatcher.init_start();
   wait_interval = 10;//interval between two adjustments
-  log_adjust_interval = 5;
+  srand(timewatcher.now());
+  log_adjust_interval = 2 + rand() % 60 / 60.0;
+  printf("time interval=%lf\n", log_adjust_interval);
   next_adjust_time = log_adjust_interval + wait_interval;
   timewatcher.init_end();
   firsttime = timewatcher.now();
@@ -507,14 +509,15 @@ void CircularLog<StaticConfig>::log_resizing(){
   if(diff_time > log_adjust_interval){//到了需要调整的时间
     if(eaet_calculation == 0){
       eaet_calculation = 1;
-      sample_flag = false;
+      //sample_flag = false;
     }else if(eaet_calculation == 2){
       new_log_size_ = fine_grained_adjustment(diff_time);
     }
 
     if(new_log_size_ == size_){
       if(size_ - tail_ < kMinimumSize){//这一轮的数据已经写到最后一个page上了
-        printf(YELLOW"lcore%lu tenant%u now time is %lf\n"NONE, ::mica::util::lcore.lcore_id(), tenant_id_, diff_time);
+        printf(YELLOW"lcore%lu tenant%u now time is %lf, wrap number %d\n"NONE, ::mica::util::lcore.lcore_id(), tenant_id_, diff_time,
+                                                            wrap_around_number_);
         update_log_parameter();
       }
     }else if(new_log_size_ > size_){
@@ -555,7 +558,8 @@ void CircularLog<StaticConfig>::log_resizing(){
   }else{//没到需要调整的时间，不需要更改log size，只需要判断并更新参数
     if(size_ > tail_){
       if(size_ - tail_ < kMinimumSize){//这一轮的数据已经写到最后一个page上了
-        printf(YELLOW"lcore%lu tenant%u now time is %lf\n"NONE, ::mica::util::lcore.lcore_id(), tenant_id_, diff_time);
+        printf(YELLOW"lcore%lu tenant%u now time is %lf, wrap number %d\n"NONE, ::mica::util::lcore.lcore_id(), tenant_id_, diff_time,
+                                                            wrap_around_number_);
         update_log_parameter();
       }
     }

@@ -21,16 +21,19 @@ struct DatagramServerConfig
 typedef ::mica::datagram::DatagramServer<DatagramServerConfig> Server;
 
 int main(int argc, const char* argv[]) {
-  if(argc != 3){
-    printf("%s NEED TARGET HIT RATIO AND SAMPLE RATE\n", argv[0]);
+  if(argc != 4){
+    printf("%s WRONG PARAMETERS\n", argv[0]);
     return EXIT_FAILURE;
   }
   ::mica::pool::target_hit_ratio = atof(argv[1]);
   ::mica::eaet::sample_rate_index = atoi(argv[2]);
+  uint16_t thread_num = static_cast<uint16_t>(atoi(argv[3]));
   
   ::mica::util::lcore.pin_thread(0);
 
-  auto config = ::mica::util::Config::load_file("server.json");
+  //auto config = ::mica::util::Config::load_file("server.json");
+  std::string server_config = "server_" + std::to_string(thread_num) + ".json";
+  auto config = ::mica::util::Config::load_file(server_config);
 
   Server::DirectoryClient dir_client(config.get("dir_client"));
 

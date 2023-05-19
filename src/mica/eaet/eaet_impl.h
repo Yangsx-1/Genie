@@ -16,7 +16,7 @@ namespace eaet{
 
 STable::STable()
 {
-    size_t num_buckets = 128 * 1048576UL;// 65536;
+    size_t num_buckets = 32 * 1048576UL;// 65536;
     num_buckets_ = (uint64_t)num_buckets;
     num_buckets_mask_ = (uint64_t)(num_buckets - 1);
 
@@ -255,7 +255,7 @@ uint64_t need_sample_masks[7] = {(uint64_t(1) << 10) - 1, (uint64_t(1) << 13) - 
                                 (uint64_t(1) << 16) - 1, (uint64_t(1) << 17) - 1, (uint64_t(1) << 18) - 1, (uint64_t(1) << 20) - 1};
 
 bool set_sampling(uint64_t keyhash){
-    return ((keyhash & need_sample_masks[sample_rate_index]) < need_sample_comp);
+    return ((keyhash & need_sample_mask) < need_sample_comp);
 }
 
 void setStatistics(rthRec *rth, uint64_t keyhash, uint64_t size, bool isGet){
@@ -324,17 +324,17 @@ void ratio_calculation(const rthRec *rth, double target, uint64_t eaet_size){
 }*/
 
 uint64_t supplement_of_stage_one(rthRec *rth, uint64_t tmpsize, size_t tenant_id){
-    uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
+    //uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
     double threshold = 0.5 * tmpsize;
     double coef = 0;
     double lower_thresh = 0;
     double between = 0;
-    
+
     for(size_t bucket_index = 0; bucket_index < rth->timehash.num_buckets_; bucket_index++){
         for(size_t item_index = 0; item_index < item_number; item_index++){
             STable::aet_item tmp_item = rth->timehash.buckets_[bucket_index].item_vec[item_index];
             if(tmp_item.keyhash != 0){
-                double avg_reuse = tmp_item.total_reuse_time / tmp_item.total_access_time;
+                double avg_reuse = 1.0 * tmp_item.total_reuse_time / tmp_item.total_access_time;
                 if(avg_reuse <= threshold){//0~0.5
                     double tmpreuse = avg_reuse;
                     if(tmpreuse == 0) continue;
@@ -385,7 +385,7 @@ uint64_t supplement_of_stage_two(rthRec *rth, uint64_t tmpsize, size_t tenant_id
         for(size_t item_index = 0; item_index < item_number; item_index++){
             STable::aet_item tmp_item = rth->timehash.buckets_[bucket_index].item_vec[item_index];
             if(tmp_item.keyhash != 0){
-                double avg_reuse = tmp_item.total_reuse_time / tmp_item.total_access_time;
+                double avg_reuse = 1.0 * tmp_item.total_reuse_time / tmp_item.total_access_time;
                 if(tmp_item.total_access_time > heap[0]){
                     heap[0] = tmp_item.total_access_time;
                     uptodown(heap, 30, 0);
