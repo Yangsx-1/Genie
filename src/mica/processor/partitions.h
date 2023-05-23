@@ -169,7 +169,7 @@ class Partitions : public ProcessorInterface<typename StaticConfig::Table> {
   char padding1[128];
 
   struct RecentKeyHashes {
-    uint16_t v[StaticConfig::kRecentKeyHashBuckets *
+    uint8_t v[StaticConfig::kRecentKeyHashBuckets *
                StaticConfig::kRecentKeyHashAssociativity];
   } __attribute__((aligned(128)));  // To prevent false sharing caused by
                                     // adjacent cacheline prefetching.

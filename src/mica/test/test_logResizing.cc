@@ -32,7 +32,7 @@ uint64_t tail_ = 0;
 double ma_thres = 0.5;// threshold for log size adjustment
 uint64_t ma_thres_ = 0;
   static constexpr size_t kAdjustMinimumSize = 32 * 1048576;//32MB
-uint8_t wrap_around_number_ = 0;
+uint16_t wrap_around_number_ = 0;
 static constexpr size_t kMinimumSize = 2 * 1048576;//2MB
 
 int flag = 0;

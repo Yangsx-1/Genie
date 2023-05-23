@@ -48,7 +48,7 @@ class CircularLog : public PoolInterface {
   ~CircularLog();
 
   typedef uint64_t Offset;
-  typedef uint8_t WrapAround;
+  typedef uint16_t WrapAround;
   static constexpr size_t kOffsetWidth = 32;//xhj
   static constexpr Offset kInsufficientSpace =
       std::numeric_limits<Offset>::max();
@@ -93,8 +93,8 @@ class CircularLog : public PoolInterface {
   uint64_t get_new_log_size() const;
   void set_new_log_size(uint64_t new_log_size);
 
-  uint8_t get_wrap_around_number() const;
-  void set_wrap_around_number(uint8_t wrap_around_number);
+  uint16_t get_wrap_around_number() const;
+  void set_wrap_around_number(uint16_t wrap_around_number);
 
   uint64_t get_mth_thres() const;
   void set_mth_thres();
@@ -143,7 +143,7 @@ class CircularLog : public PoolInterface {
 
   uint8_t lock_;
   /**/
-  volatile uint8_t wrap_around_number_;//8 bit for wrap around number
+  volatile uint16_t wrap_around_number_;//8 bit for wrap around number
   /*
   uint8_t memory_adjustment_flag_;//8 bit for flag the memory adjustment
   uint8_t log_size_calculation_flag_;//8 bit for flag the log size calculation

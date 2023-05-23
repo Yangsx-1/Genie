@@ -18,7 +18,7 @@ bool Partitions<StaticConfig>::is_recent_key_hash(uint16_t lcore_id,
   size_t index =
       ((key_hash >> 32) & (StaticConfig::kRecentKeyHashBuckets - 1)) *
       StaticConfig::kRecentKeyHashAssociativity;
-  uint16_t tag = static_cast<uint16_t>(key_hash);
+  uint8_t tag = static_cast<uint8_t>(key_hash);
 
   if (StaticConfig::kRecentKeyHashAssociativity == 1) {
     return recent_key_hashes_[lcore_id].v[index] == tag;
@@ -35,7 +35,7 @@ void Partitions<StaticConfig>::update_recent_key_hash(uint16_t lcore_id,
   size_t index =
       ((key_hash >> 32) & (StaticConfig::kRecentKeyHashBuckets - 1)) *
       StaticConfig::kRecentKeyHashAssociativity;
-  uint16_t tag = static_cast<uint16_t>(key_hash);
+  uint8_t tag = static_cast<uint8_t>(key_hash);
 
   if (recent_key_hashes_[lcore_id].v[index] == tag) return;
 

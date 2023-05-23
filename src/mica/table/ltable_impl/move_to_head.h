@@ -8,7 +8,7 @@ template <class StaticConfig>
 void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
                                         const Item* item, size_t key_length,
                                         size_t value_length, size_t item_index,
-                                        uint64_t item_vec, uint8_t item_wrap_number,
+                                        uint64_t item_vec, uint16_t item_wrap_number,
                                         uint64_t item_offset) {
   if (!std::is_base_of<::mica::pool::CircularLogTag, typename Pool::Tag>::value)
     return;
@@ -48,7 +48,7 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
       //uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
 
       uint64_t new_item_offset = pool_->allocate(item_size);
-      uint8_t new_item_wrap_number = pool_->get_wrap_around_number();
+      uint16_t new_item_wrap_number = pool_->get_wrap_around_number();
       //uint64_t new_tail = Specialization::get_tail(pool_);
 
       //uint64_t new_tail_for_cleanup = pool_->get_tail_for_cleanup();

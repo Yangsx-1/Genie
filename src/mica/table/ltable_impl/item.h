@@ -21,8 +21,8 @@ uint32_t LTable<StaticConfig>::make_kv_length_vec(uint32_t key_length,
 }
 
 template <class StaticConfig>
-uint16_t LTable<StaticConfig>::calc_tag(uint64_t key_hash) {
-  uint16_t tag = (uint16_t)(key_hash & Bucket::kTagMask);
+uint8_t LTable<StaticConfig>::calc_tag(uint64_t key_hash) {
+  uint8_t tag = (uint8_t)(key_hash & Bucket::kTagMask);
   if (tag == 0)
     return 1;
   else

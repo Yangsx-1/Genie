@@ -153,26 +153,14 @@ class LTable : public TableInterface {
     uint32_t next_extra_bucket_index;  // 1-base; 0 = no extra bucket
     uint64_t item_vec[StaticConfig::kBucketSize];
 
-    // 16: tag (1-base)
-    // 48: item offset
-    // item == 0: empty item
-    
-    /*
-    @Author: Huijuan Xiao
-    @Description:
-    the structure of hash entry should be modified
-    16:tag (1-base)
-    8:wrap wround number
-    40:item offset 
-    item == 0:empty item
-    */
+    /**
+     * @description: tag 8bits, tenant_id 8bits, wrap_number 16bits, offset 32bits
+     * @author: yangsx
+     */    
 
     static constexpr uint64_t kTagMask = (uint64_t(1) << 8) - 1;
     //static constexpr uint64_t kWrapAroundMask = ((uint64_t(1) << 48) - 1) &(~((uint64_t(1) << 40) - 1));
-    /*
-     *@Author: Huijuan Xiao
-     *@Description: kItemOffsetMask 48 -> 40
-    */
+    
     static constexpr uint64_t kItemOffsetMask = (uint64_t(1) << 32) - 1;
     /*
      *@Author: Huijuan Xiao
@@ -209,12 +197,12 @@ class LTable : public TableInterface {
   };
 
   // ltable_impl/bucket.h
-  static uint16_t get_tag(uint64_t item_vec);
+  static uint8_t get_tag(uint64_t item_vec);
   static uint64_t get_item_offset(uint64_t item_vec);
-  static uint8_t get_item_wrap_around_number(uint64_t item_vec);
+  static uint16_t get_item_wrap_around_number(uint64_t item_vec);
   static uint8_t get_item_tenant_id(uint64_t item_vec);
   //static uint64_t make_item_vec(uint16_t tag, uint64_t item_offset);
-  static uint64_t make_item_vec(uint16_t tag, uint8_t tenant_id, uint8_t wrap_number, uint64_t item_offset);
+  static uint64_t make_item_vec(uint8_t tag, uint8_t tenant_id, uint16_t wrap_number, uint64_t item_offset);
   uint32_t calc_bucket_index(uint64_t key_hash) const;
   static bool has_extra_bucket(const Bucket* bucket);
   const Bucket* get_extra_bucket(uint32_t extra_bucket_index) const;
@@ -224,18 +212,18 @@ class LTable : public TableInterface {
   void fill_hole(Bucket* bucket, size_t unused_item_index);
   size_t get_empty(Bucket* bucket, Bucket** located_bucket);
   size_t get_empty_or_oldest(Bucket* bucket, Bucket** located_bucket);
-  size_t find_item_index(const Bucket* bucket, uint64_t key_hash, uint16_t tag,
+  size_t find_item_index(const Bucket* bucket, uint64_t key_hash, uint8_t tag,
                          const char* key, size_t key_length,
                          const Bucket** located_bucket) const;
-  size_t find_item_index(Bucket* bucket, uint64_t key_hash, uint16_t tag,
+  size_t find_item_index(Bucket* bucket, uint64_t key_hash, uint8_t tag,
                          const char* key, size_t key_length,
                          Bucket** located_bucket);
-  size_t find_same_tag(const Bucket* bucket, uint16_t tag,
+  size_t find_same_tag(const Bucket* bucket, uint8_t tag,
                        const Bucket** located_bucket) const;
-  size_t find_same_tag(Bucket* bucket, uint16_t tag, Bucket** located_bucket);
+  size_t find_same_tag(Bucket* bucket, uint8_t tag, Bucket** located_bucket);
   void cleanup_bucket(uint64_t old_tail, uint64_t new_tail);
   void cleanup_all();
-  bool isValid(uint8_t log_wrap_number, uint8_t item_wrap_number, 
+  bool isValid(uint16_t log_wrap_number, uint16_t item_wrap_number, 
               uint64_t log_offset, uint64_t item_offset, uint64_t size_);
 
   // ltable_impl/info.h
@@ -248,7 +236,7 @@ class LTable : public TableInterface {
   static uint32_t get_value_length(uint32_t kv_length_vec);
   static uint32_t make_kv_length_vec(uint32_t key_length,
                                      uint32_t value_length);
-  static uint16_t calc_tag(uint64_t key_hash);
+  static uint8_t calc_tag(uint64_t key_hash);
   
   static void set_item(Item* item, uint64_t key_hash, const char* key,
                        uint32_t key_length, const char* value,
@@ -261,7 +249,7 @@ class LTable : public TableInterface {
   // ltable_impl/move_to_head.h
   void move_to_head(Bucket* bucket, Bucket* located_bucket, const Item* item,
                     size_t key_length, size_t value_length, size_t item_index,
-                    uint64_t item_vec, uint8_t item_wrap_number, uint64_t item_offset);
+                    uint64_t item_vec, uint16_t item_wrap_number, uint64_t item_offset);
 
   // ltable_impl/lock.h
   void lock_bucket(Bucket* bucket);

@@ -12,7 +12,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
                                  bool allow_mutation) const {
   assert(key_length <= kMaxKeyLength);
   uint32_t bucket_index = calc_bucket_index(key_hash);
-  uint16_t tag = calc_tag(key_hash);
+  uint8_t tag = calc_tag(key_hash);
 
   const Bucket* bucket = buckets_ + bucket_index;
   bool partial_value;
@@ -32,7 +32,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
 
     uint64_t item_vec = located_bucket->item_vec[item_index];
     uint64_t item_offset = get_item_offset(item_vec);
-    uint8_t item_wrap_number = get_item_wrap_around_number(item_vec);
+    uint16_t item_wrap_number = get_item_wrap_around_number(item_vec);
     uint8_t tenant_id = get_item_tenant_id(item_vec);
     if(tenant_id >= kTenantCount){
       printf("Too many tenants!\n");

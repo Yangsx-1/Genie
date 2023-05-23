@@ -5,8 +5,8 @@
 namespace mica {
 namespace table {
 template <class StaticConfig>
-uint16_t LTable<StaticConfig>::get_tag(uint64_t item_vec) {
-  return static_cast<uint16_t>(item_vec >> 48);
+uint8_t LTable<StaticConfig>::get_tag(uint64_t item_vec) {
+  return static_cast<uint8_t>(item_vec >> 56);
 }
 
 template <class StaticConfig>
@@ -15,21 +15,21 @@ uint64_t LTable<StaticConfig>::get_item_offset(uint64_t item_vec) {
 }
 
 template <class StaticConfig>
-uint8_t LTable<StaticConfig>::get_item_wrap_around_number(uint64_t item_vec) {
+uint16_t LTable<StaticConfig>::get_item_wrap_around_number(uint64_t item_vec) {
   //uint64_t kWrapAroundMask = ((uint64_t(1) << 48) - 1) &(~((uint64_t(1) << 40) - 1));
-  return static_cast<uint8_t>(item_vec >> 32);
+  return static_cast<uint16_t>(item_vec >> 32);
 }
 
 template <class StaticConfig>
 uint8_t LTable<StaticConfig>::get_item_tenant_id(uint64_t item_vec){
-  return static_cast<uint8_t>(item_vec >> 40);
+  return static_cast<uint8_t>(item_vec >> 48);
 }
 
 template <class StaticConfig>
-uint64_t LTable<StaticConfig>::make_item_vec(uint16_t tag, uint8_t tenant_id,
-                                             uint8_t wrap_number, uint64_t item_offset) {
-  uint64_t item_vector = (static_cast<uint64_t>(tag) << 48) | item_offset;
-  item_vector |=  (static_cast<uint64_t>(tenant_id) << 40);
+uint64_t LTable<StaticConfig>::make_item_vec(uint8_t tag, uint8_t tenant_id,
+                                             uint16_t wrap_number, uint64_t item_offset) {
+  uint64_t item_vector = (static_cast<uint64_t>(tag) << 56) | item_offset;
+  item_vector |=  (static_cast<uint64_t>(tenant_id) << 48);
   item_vector |=  (static_cast<uint64_t>(wrap_number) << 32);
   return item_vector;
   //return ((static_cast<uint64_t>(tag) << 48) | item_offset);
@@ -250,7 +250,7 @@ size_t LTable<StaticConfig>::get_empty_or_oldest(Bucket* bucket,
 
 template <class StaticConfig>
 size_t LTable<StaticConfig>::find_item_index(
-    const Bucket* bucket, uint64_t key_hash, uint16_t tag, const char* key,
+    const Bucket* bucket, uint64_t key_hash, uint8_t tag, const char* key,
     size_t key_length, const Bucket** located_bucket) const {
   const Bucket* current_bucket = bucket;
 
@@ -261,7 +261,7 @@ size_t LTable<StaticConfig>::find_item_index(
       if (get_tag(item_vec) != tag) continue;
 
       uint64_t item_offset = get_item_offset(item_vec);
-      uint8_t item_wrap_number = get_item_wrap_around_number(item_vec);
+      uint16_t item_wrap_number = get_item_wrap_around_number(item_vec);
       /*
       Add is_valid() for item or offset availability.
       */
@@ -313,7 +313,7 @@ size_t LTable<StaticConfig>::find_item_index(
 
 template <class StaticConfig>
 size_t LTable<StaticConfig>::find_item_index(Bucket* bucket, uint64_t key_hash,
-                                             uint16_t tag, const char* key,
+                                             uint8_t tag, const char* key,
                                              size_t key_length,
                                              Bucket** located_bucket) {
   return find_item_index(const_cast<const Bucket*>(bucket), key_hash, tag, key,
@@ -323,7 +323,7 @@ size_t LTable<StaticConfig>::find_item_index(Bucket* bucket, uint64_t key_hash,
 
 template <class StaticConfig>
 size_t LTable<StaticConfig>::find_same_tag(
-    const Bucket* bucket, uint16_t tag, const Bucket** located_bucket) const {
+    const Bucket* bucket, uint8_t tag, const Bucket** located_bucket) const {
   const Bucket* current_bucket = bucket;
 
   while (true) {
@@ -345,7 +345,7 @@ size_t LTable<StaticConfig>::find_same_tag(
 }
 
 template <class StaticConfig>
-size_t LTable<StaticConfig>::find_same_tag(Bucket* bucket, uint16_t tag,
+size_t LTable<StaticConfig>::find_same_tag(Bucket* bucket, uint8_t tag,
                                            Bucket** located_bucket) {
   return find_same_tag(const_cast<const Bucket*>(bucket), tag,
                        const_cast<const Bucket**>(located_bucket));
@@ -385,7 +385,7 @@ void LTable<StaticConfig>::cleanup_bucket(uint64_t old_tail,
         if (*item_vec_p == 0) continue;
 
         uint64_t item_offset = get_item_offset(*item_vec_p);
-        uint8_t item_wrap_number = get_item_wrap_around_number(*item_vec_p);
+        uint16_t item_wrap_number = get_item_wrap_around_number(*item_vec_p);
 
         //if (!Specialization::is_valid(pool_, *item_vec_p)) {
         /*
@@ -411,12 +411,12 @@ void LTable<StaticConfig>::cleanup_bucket(uint64_t old_tail,
 }
 
 template <class StaticConfig>
-bool LTable<StaticConfig>::isValid(uint8_t log_wrap_number, uint8_t item_wrap_number, uint64_t tail_, uint64_t offset, uint64_t size_){
+bool LTable<StaticConfig>::isValid(uint16_t log_wrap_number, uint16_t item_wrap_number, uint64_t tail_, uint64_t offset, uint64_t size_){
   uint64_t kWrapAroundSize = 2097152;
   if(log_wrap_number == item_wrap_number){
     return true;
   }
-  else if(log_wrap_number == static_cast<uint8_t>(static_cast<uint8_t>(1) + item_wrap_number)){
+  else if(log_wrap_number == static_cast<uint16_t>(static_cast<uint16_t>(1) + item_wrap_number)){
     return ((offset > tail_) && (offset < (size_ - kWrapAroundSize)));
   }
   else{
@@ -429,7 +429,7 @@ void LTable<StaticConfig>::cleanup_specified_bucket(uint32_t begin_index, uint32
   uint32_t bucket_index = begin_index;
   uint32_t cleaned_bucket_number = 0;
   uint64_t tails[kTenantCount] = {0};
-  uint8_t wrap_numbers[kTenantCount] = {0};
+  uint16_t wrap_numbers[kTenantCount] = {0};
   uint64_t sizes[kTenantCount] = {0};
   for(size_t i = 0; i < kTenantCount; i++){
     Pool* tmp_pool = pools_[i];
@@ -449,7 +449,7 @@ void LTable<StaticConfig>::cleanup_specified_bucket(uint32_t begin_index, uint32
       if (*item_vec_p == 0) continue;
 
       uint64_t item_offset = get_item_offset(*item_vec_p);
-      uint8_t item_wrap_number = get_item_wrap_around_number(*item_vec_p);
+      uint16_t item_wrap_number = get_item_wrap_around_number(*item_vec_p);
       size_t tenant_id = get_item_tenant_id(*item_vec_p);
       //Pool* tmp_pool = pools_[tenant_id];
       //tails[tenant_id] = tmp_pool->get_tail();

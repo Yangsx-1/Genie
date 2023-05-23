@@ -21,7 +21,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
   }
   //printf("tenant%d in set! total tenant=%d lcore=%d\n", tenant_id, kTenantCount, ::mica::util::lcore.lcore_id());
   Pool* pool_ = pools_[tenant_id];
-  uint16_t tag = calc_tag(key_hash);
+  uint8_t tag = calc_tag(key_hash);
 
   Bucket* bucket = buckets_ + bucket_index;
 
@@ -76,7 +76,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
       ::mica::util::roundup<8>(value_length));
   //printf("key size=%d\tvalue size=%d\n", key_length, value_length);
   uint64_t item_offset = 0;
-  uint8_t item_wrap_number = 0;
+  uint16_t item_wrap_number = 0;
 
   // we have to lock the pool because is_valid check must be correct in the
   // overwrite mode;
@@ -120,7 +120,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
   //uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
 
   uint64_t new_item_offset = pool_->allocate(new_item_size);
-  uint8_t new_item_wrap_number = pool_->get_wrap_around_number();
+  uint16_t new_item_wrap_number = pool_->get_wrap_around_number();
   if (new_item_offset == Pool::kInsufficientSpace) {
     // no more space
     // TODO: add a statistics entry
@@ -202,7 +202,7 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
   }
   //printf("tenant%d in set!\n", tenant_id);
   Pool* pool_ = pools_[tenant_id];
-  uint16_t tag = calc_tag(key_hash);
+  uint8_t tag = calc_tag(key_hash);
 
   Bucket* bucket = buckets_ + bucket_index;
 
@@ -256,7 +256,7 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
       sizeof(Item) + ::mica::util::roundup<8>(key_length) +
       ::mica::util::roundup<8>(value_length));
   uint64_t item_offset = 0;
-  uint8_t item_wrap_number = 0;
+  uint16_t item_wrap_number = 0;
 
   // we have to lock the pool because is_valid check must be correct in the
   // overwrite mode;
@@ -300,7 +300,7 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
   //uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
 
   uint64_t new_item_offset = pool_->allocate(new_item_size);
-  uint8_t new_item_wrap_number = pool_->get_wrap_around_number();
+  uint16_t new_item_wrap_number = pool_->get_wrap_around_number();
   if (new_item_offset == Pool::kInsufficientSpace) {
     // no more space
     // TODO: add a statistics entry

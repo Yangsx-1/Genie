@@ -355,13 +355,13 @@ uint64_t supplement_of_stage_one(rthRec *rth, uint64_t tmpsize, size_t tenant_id
     coef = coef / (lower_thresh + between);
 
     uint64_t bias = tmpsize * coef;
-    //printf("lcore%u tenant%u\teaet size=%lu\tbias=%lu\n", lcore_id, tenant_id, tmpsize, bias);
+    printf("tenant%u\teaet size=%lu\tbias=%lu\tcoef=%lf\n", tenant_id, tmpsize, bias, coef);
 
     return bias;
 }
 
 uint64_t supplement_of_stage_two(rthRec *rth, uint64_t tmpsize, size_t tenant_id, double* out_theta){
-    uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
+    //uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
     double threshold = 0.5 * tmpsize;
     double coef = 0;
     double lower_thresh = 0;
@@ -412,7 +412,7 @@ uint64_t supplement_of_stage_two(rthRec *rth, uint64_t tmpsize, size_t tenant_id
     uint64_t bias = tmpsize * coef;
     std::sort(heap, heap + 30, std::greater<int>());
     *out_theta = skewEstimation(heap, 30);
-    //printf("lcore%u tenant%u\teaet size=%lu\tbias=%lu\n", lcore_id, tenant_id, tmpsize, bias);
+    printf("tenant%u\teaet size=%lu\tbias=%lu\t coef=%lf\n", tenant_id, tmpsize, bias, coef);
 
     return bias;
 }

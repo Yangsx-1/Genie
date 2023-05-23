@@ -10,7 +10,7 @@ Result LTable<StaticConfig>::test(uint64_t key_hash, const char* key,
   assert(key_length <= kMaxKeyLength);
 
   uint32_t bucket_index = calc_bucket_index(key_hash);
-  uint16_t tag = calc_tag(key_hash);
+  uint8_t tag = calc_tag(key_hash);
 
   const Bucket* bucket = buckets_ + bucket_index;
 

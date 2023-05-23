@@ -64,7 +64,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   timewatcher.init_start();
   wait_interval = 10;//interval between two adjustments
   srand(timewatcher.now());
-  log_adjust_interval = 2 + rand() % 60 / 60.0;
+  log_adjust_interval = 5 + rand() % 60 / 60.0;
   printf("time interval=%lf\n", log_adjust_interval);
   next_adjust_time = log_adjust_interval + wait_interval;
   timewatcher.init_end();
@@ -180,7 +180,7 @@ bool CircularLog<StaticConfig>::is_valid(WrapAround item_wrap_number, Offset off
     if(wrap_around_number_ == item_wrap_number){
       return true;
     }
-    else if(wrap_around_number_ == static_cast<uint8_t>(static_cast<uint8_t>(1) + item_wrap_number)){
+    else if(wrap_around_number_ == static_cast<uint16_t>(static_cast<uint16_t>(1) + item_wrap_number)){
       return ((offset > tail_) && (offset < (size_ - kWrapAroundSize)));
     }
     else{
@@ -273,12 +273,12 @@ void CircularLog<StaticConfig>::set_ma_thres() {
 }
 
 template <class StaticConfig>
-uint8_t CircularLog<StaticConfig>::get_wrap_around_number() const {
+uint16_t CircularLog<StaticConfig>::get_wrap_around_number() const {
   return wrap_around_number_;
 }
 
 template <class StaticConfig>
-void CircularLog<StaticConfig>::set_wrap_around_number(uint8_t wrap_around_number) {
+void CircularLog<StaticConfig>::set_wrap_around_number(uint16_t wrap_around_number) {
   wrap_around_number_ =  wrap_around_number;
 }
 
@@ -438,7 +438,8 @@ uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* o
     printf(YELLOW"lcore%ld tenant%d origin EAET log size:%lu\n"NONE, local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(tmpsize));
     uint64_t bias1 = supplement_of_stage_one(rth, tmpsize, tenant_id_);//first bias
     uint64_t bias2 = supplement_of_stage_two(rth, tmpsize + bias1, tenant_id_, out_theta);//second bias
-    eaet_log_size = tmpsize + bias2;// eaet + second bias
+    eaet_log_size = tmpsize + bias1 + bias2;// eaet + second bias
+    printf(YELLOW"eaet=%lu bias1=%lu bias2=%lu\n", tmpsize, bias1, bias2);
     printf(YELLOW"lcore%ld tenant%d using EAET log size:%lu\n"NONE, local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(eaet_log_size));
   //}else{//误差小不需要调
   //  eaet_log_size = get_size();

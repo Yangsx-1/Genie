@@ -23,7 +23,7 @@ void LTable<StaticConfig>::prefetch_pool(uint64_t key_hash) const {
   uint32_t bucket_index = calc_bucket_index(key_hash);
   const Bucket* bucket = buckets_ + bucket_index;
 
-  uint16_t tag = calc_tag(key_hash);
+  uint8_t tag = calc_tag(key_hash);
 
   size_t item_index;
   for (item_index = 0; item_index < StaticConfig::kBucketSize; item_index++) {
