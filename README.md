@@ -27,7 +27,7 @@ Dependencies for execution
  * bash >= 4.0
  * python >= 3.4
  * etcd >= 2.2
-
+<!---
 Compiling DPDK
 --------------
 
@@ -67,7 +67,7 @@ Running microbench
 
          * cd mica2/build
          * sudo ./microbench 0.00          # 0.00 = uniform key popularity
-
+-->
 Authors
 -------
 
