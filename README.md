@@ -1,7 +1,9 @@
 Serverless Network Function
 ======
 
-A fast in-memory key-value store.
+Serverless NF – Fine-Grained Resource Allocation with Real-Time Elasticity and Pay-Per-Use Billing
+
+We are going to create a serverless NF framework for stateful NFs with fine-grained and decoupled CPU/memory resource allocation, dynamic resource elasticity, and flexible pay-per-use pricing, aiming at providing next-generation network function as a service with better flexibility and higher cost-effectiveness for customers.
 
 Requirements
 ------------
