@@ -76,8 +76,6 @@ Xiao Huijuan & Yang Shixi
 License
 -------
 
-        Copyright 2014, 2015, 2016, 2017 Carnegie Mellon University
-
         Licensed under the Apache License, Version 2.0 (the "License");
         you may not use this file except in compliance with the License.
         You may obtain a copy of the License at
@@ -90,5 +88,3 @@ License
         See the License for the specific language governing permissions and
         limitations under the License.
 
-2022/09/04
-当前这个版本是在mica的基础上，对每个线程的log进行了修改，使之可以支持log shrink/expanding.
