@@ -1,4 +1,4 @@
-MICA 2
+SIMKV
 ======
 
 A fast in-memory key-value store.
@@ -71,7 +71,7 @@ Running microbench
 Authors
 -------
 
-Hyeontaek Lim (hl@cs.cmu.edu)
+Xiao Huijuan & Yang Shixi
 
 License
 -------
