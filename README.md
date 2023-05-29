@@ -1,4 +1,4 @@
-SIMKV
+Serverless Network Function
 ======
 
 A fast in-memory key-value store.
