@@ -79,7 +79,6 @@ int main(){
         key_i = zg.next();
         uint64_t* key_ptr = reinterpret_cast<uint64_t*>(key);
         *key_ptr = key_i;
-        key[7] = 0;
         //printf("x%"PRIx64"\n", *key_ptr);
         key_hash = hash(key, key_length);
         if(is_get){
