@@ -453,6 +453,7 @@ uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* o
 
   parda_log_size = ::mica::util::roundup<2 * 1048576>(parda_log_size);
   last_log_size = parda_log_size;
+  ::mica::parda::clean_up_parda(parda);
   return parda_log_size;
 }
 
@@ -513,7 +514,7 @@ void CircularLog<StaticConfig>::log_resizing(){
   if(diff_time > log_adjust_interval){//到了需要调整的时间
     if(parda_calculation == 0){
       parda_calculation = 1;
-      //sample_flag = false;
+      sample_flag = false;
     }else if(parda_calculation == 2){
       new_log_size_ = fine_grained_adjustment(diff_time);
     }

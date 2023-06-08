@@ -80,6 +80,17 @@ void STable::add_item(uint64_t keyhash, uint64_t curr_time, Bucket* curr_bucket,
     }
 }
 
+void STable::cleanup_all(){
+    for(uint64_t bucket_index = 0; bucket_index < num_buckets_; bucket_index++){
+        for(uint64_t item_index = 0; item_index < item_number; item_index++){
+            if(buckets_[bucket_index].item_vec[item_index].keyhash == 0) continue;
+            buckets_[bucket_index].item_vec[item_index].keyhash = 0;
+            buckets_[bucket_index].item_vec[item_index].last_time = 0;
+            buckets_[bucket_index].item_vec[item_index].total_access_time = 0;
+        }
+    }
+}
+
 /*size_t STable::size(){
     size_t numbers = 0;
     for(size_t bucket_index = 0; bucket_index < num_buckets_; bucket_index++){
@@ -178,6 +189,14 @@ double theta_calculation(STable* table){
     }
     std::sort(heap, heap + 30, std::greater<int>());
     return skewEstimation(heap, 30);
+}
+
+void clean_up_parda(parda_data_t* pdt){
+    pdt->table->cleanup_all();
+    freetree(pdt->root);
+    pdt->root = NULL;
+    memset(pdt->histogram, 0, (nbuckets + 2) * sizeof(uint32_t));
+    pdt->n = 0;
 }
 
 }
