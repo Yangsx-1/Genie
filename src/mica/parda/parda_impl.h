@@ -2,6 +2,7 @@
 #define _PARDA_IMPL
 
 #include "parda.h"
+#include "least_square_regression.h"
 #include<climits>
 
 namespace mica{
@@ -89,18 +90,18 @@ void STable::add_item(uint64_t keyhash, uint64_t curr_time, Bucket* curr_bucket,
     return numbers;
 }*/
 
-static inline void process_one_access(uint64_t keyhash, program_data_t* pdt) {
+static inline void process_one_access(uint64_t keyhash, parda_data_t* pdt) {
     int distance;
-    size_t bucket_index = pdt->gh->calc_bucket_index(keyhash >> 20);
-    STable::Bucket* curr_bucket = &pdt->gh->buckets_[bucket_index];
-    size_t item_index = pdt->gh->find_same_keyhash(keyhash, curr_bucket);
+    size_t bucket_index = pdt->table->calc_bucket_index(keyhash >> 20);
+    STable::Bucket* curr_bucket = &pdt->table->buckets_[bucket_index];
+    size_t item_index = pdt->table->find_same_keyhash(keyhash, curr_bucket);
     uint32_t time = pdt->n;
     if (item_index == item_number) {
         pdt->root = Tinsert(time, pdt->root);
 
         pdt->histogram[B_INF] += 1;
         
-        pdt->gh->add_item(keyhash, time, curr_bucket, item_index);
+        pdt->table->add_item(keyhash, time, curr_bucket, item_index);
     }
     // Hit: We've seen this data before
     else {
@@ -109,7 +110,7 @@ static inline void process_one_access(uint64_t keyhash, program_data_t* pdt) {
         distance = node_size(pdt->root->right);
         pdt->root = Tdelete(lookup, pdt->root);
         pdt->root = Tinsert(time, pdt->root);
-        pdt->gh->add_item(keyhash, time, curr_bucket, item_index);
+        pdt->table->add_item(keyhash, time, curr_bucket, item_index);
         // Is distance greater than the largest bucket
         if (distance > nbuckets)
             pdt->histogram[B_OVFL] += 1;
@@ -155,11 +156,28 @@ bool set_sampling(uint64_t keyhash){
     return ((keyhash & need_sample_mask) < need_sample_comp);
 }
 
-void pardaStatistics(uint64_t keyhash, program_data_t* pdt){
+void pardaStatistics(uint64_t keyhash, parda_data_t* pdt){
     if(keyhash == 0) return;
     if(set_sampling(keyhash)){
         process_one_access(keyhash, pdt);
     }
+}
+
+double theta_calculation(STable* table){
+    uint32_t heap[30] = {0};
+    for(uint64_t bucket_index = 0; bucket_index < table->num_buckets_; ++bucket_index){
+        for(uint64_t item_index = 0; item_index < item_number; ++item_index){
+            STable::hash_item tmp_item = table->buckets_[bucket_index].item_vec[item_index];
+            if(tmp_item.keyhash != 0){
+                if(tmp_item.total_access_time > heap[0]){
+                    heap[0] = tmp_item.total_access_time;
+                    uptodown(heap, 30, 0);
+                }
+            }
+        }
+    }
+    std::sort(heap, heap + 30, std::greater<int>());
+    return skewEstimation(heap, 30);
 }
 
 }

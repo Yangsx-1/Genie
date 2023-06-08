@@ -294,8 +294,8 @@ void DatagramServer<StaticConfig>::check_memory_resizing(){
       ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(tenant_id);
       if(tmp_pool->parda_calculation == 1){//需要计算
         double theta = 0;
-        uint64_t item_size =  ceil(processor_->avg_value_length[tenant_id]) + 
-                              ceil(processor_->avg_key_length[tenant_id]) + 24;//basic_struct_size = 24
+        uint64_t item_size =  round(processor_->avg_value_length[tenant_id]) + 
+                              round(processor_->avg_key_length[tenant_id]) + 24;//basic_struct_size = 24
         tmp_pool->set_new_log_size(tmp_pool->memory_estimation(partition_number, &theta, item_size));
         tmp_pool->parda_calculation = 2;//计算完毕
         printf("out theta = %lf\n", theta);

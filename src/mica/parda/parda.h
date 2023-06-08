@@ -47,23 +47,24 @@ class STable{
 
 const int nbuckets = DEFAULT_NBUCKETS;
 
-typedef struct program_data_t {
-    STable* gh;
+typedef struct parda_data_t {
+    STable* table;
     Tree* root;
     uint32_t* histogram;
     uint64_t n;
-    program_data_t() {
-        gh = new STable;
+    parda_data_t() {
+        table = new STable;
         root = NULL;
-        histogram = (uint32_t*)malloc(sizeof(uint32_t) * (nbuckets+2));
+        histogram = new uint32_t[nbuckets + 2];
         memset(histogram, 0, (nbuckets + 2) * sizeof(uint32_t));
         n = 0;
     }
 };
 
-static inline void process_one_access(uint64_t keyhash, program_data_t* pdt);
+static inline void process_one_access(uint64_t keyhash, parda_data_t* pdt);
 uint64_t get_pred_size(uint32_t* histogram, uint64_t sample_rate, double target, uint64_t item_size);
-void pardaStatistics(uint64_t keyhash, program_data_t* pdt);
+void pardaStatistics(uint64_t keyhash, parda_data_t* pdt);
+double theta_calculation(STable* table);
 
 }
 }

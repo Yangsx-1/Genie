@@ -106,7 +106,7 @@ class CircularLog : public PoolInterface {
   void update_log_size();
   uint32_t get_poolstruct_item_size();
 
-  ::mica::parda::program_data_t* parda;
+  ::mica::parda::parda_data_t* parda;
   volatile int parda_calculation;//0不需要计算//1需要计算//2计算完毕
   bool sample_flag;//是否需要sample
 

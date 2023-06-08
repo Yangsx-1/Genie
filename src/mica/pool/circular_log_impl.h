@@ -65,13 +65,13 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   timewatcher.init_start();
   wait_interval = 10;//interval between two adjustments
   srand(timewatcher.now());
-  log_adjust_interval = 3 + rand() % 60 / 60.0;
+  log_adjust_interval = 5 + rand() % 60 / 60.0;
   printf("time interval=%lf\n", log_adjust_interval);
   next_adjust_time = log_adjust_interval + wait_interval;
   timewatcher.init_end();
   firsttime = timewatcher.now();
 
-  parda = new ::mica::parda::program_data_t();
+  parda = new ::mica::parda::parda_data_t();
   parda_calculation = 0;
   sample_flag = true;
   /*
@@ -436,6 +436,8 @@ uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* o
     parda_log_size = tmpsize;
     printf(YELLOW"lcore%ld tenant%d using PARDA log size:%lu\n"NONE, 
                               local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(parda_log_size));
+    
+    *out_theta = ::mica::parda::theta_calculation(parda->table);
   }else{//误差小不需要调
    parda_log_size = get_size();
    printf(YELLOW"lcore%ld tenant%d workload not shift! maintaining old size!\n"NONE, local_id, tenant_id_);
