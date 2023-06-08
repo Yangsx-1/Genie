@@ -26,7 +26,7 @@ int main(int argc, const char* argv[]) {
     return EXIT_FAILURE;
   }
   ::mica::pool::target_hit_ratio = atof(argv[1]);
-  ::mica::eaet::sample_rate_index = atoi(argv[2]);
+  ::mica::parda::sample_rate_index = atoi(argv[2]);
   uint16_t thread_num = static_cast<uint16_t>(atoi(argv[3]));
   
   ::mica::util::lcore.pin_thread(0);

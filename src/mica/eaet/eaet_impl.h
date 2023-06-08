@@ -9,6 +9,7 @@
 #include<string>
 #include "mica/util/lcore.h"
 #include "mica/eaet/least_square_regression.h"
+#include<fstream>
 
 namespace mica{
 namespace eaet{
@@ -324,17 +325,21 @@ void ratio_calculation(const rthRec *rth, double target, uint64_t eaet_size){
 }*/
 
 uint64_t supplement_of_stage_one(rthRec *rth, uint64_t tmpsize, size_t tenant_id){
-    //uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
+    uint16_t lcore_id = static_cast<uint16_t>(::mica::util::lcore.lcore_id());
     double threshold = 0.5 * tmpsize;
     double coef = 0;
     double lower_thresh = 0;
     double between = 0;
-
+    FILE* f;
+    if(lcore_id == 0) f = fopen("reuse_record.txt", "w");
     for(size_t bucket_index = 0; bucket_index < rth->timehash.num_buckets_; bucket_index++){
         for(size_t item_index = 0; item_index < item_number; item_index++){
             STable::aet_item tmp_item = rth->timehash.buckets_[bucket_index].item_vec[item_index];
             if(tmp_item.keyhash != 0){
                 double avg_reuse = 1.0 * tmp_item.total_reuse_time / tmp_item.total_access_time;
+                if(lcore_id == 0){
+                    fprintf(f, "%lu %lu %lf\n", tmp_item.total_access_time, tmp_item.total_reuse_time, avg_reuse);
+                }
                 if(avg_reuse <= threshold){//0~0.5
                     double tmpreuse = avg_reuse;
                     if(tmpreuse == 0) continue;
@@ -351,7 +356,8 @@ uint64_t supplement_of_stage_one(rthRec *rth, uint64_t tmpsize, size_t tenant_id
             }
         }
     }
-
+    fclose(f);
+    printf("lower=%lf between=%lf coef=%lf\n", lower_thresh, between, coef);
     coef = coef / (lower_thresh + between);
 
     uint64_t bias = tmpsize * coef;

@@ -3,9 +3,10 @@
 #define MICA_POOL_CIRCULAR_LOG_IMPL_H_
 #ifndef EREW
 #define EREW
-#include "mica/eaet/eaet_impl.h"
+#include "mica/parda/parda_impl.h"
 #include "mica/util/lcore.h"
 #include<sys/time.h>
+#include<cmath>
 
 #define YELLOW       "\033[1;33m"
 #define NONE         "\033[m"
@@ -64,14 +65,14 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   timewatcher.init_start();
   wait_interval = 10;//interval between two adjustments
   srand(timewatcher.now());
-  log_adjust_interval = 5 + rand() % 60 / 60.0;
+  log_adjust_interval = 3 + rand() % 60 / 60.0;
   printf("time interval=%lf\n", log_adjust_interval);
   next_adjust_time = log_adjust_interval + wait_interval;
   timewatcher.init_end();
   firsttime = timewatcher.now();
-  rth = new ::mica::eaet::rthRec();
 
-  eaet_calculation = 0;
+  parda = new ::mica::parda::program_data_t();
+  parda_calculation = 0;
   sample_flag = true;
   /*
   memory_adjustment_flag_ = 0;
@@ -136,7 +137,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
 template <class StaticConfig>
 CircularLog<StaticConfig>::~CircularLog() {
   if (!alloc_->unmap(data_)) assert(false);
-  delete rth;
+  delete parda;
   //if (!alloc_->unmap(data_ + size_)) assert(false);
 }
 
@@ -425,35 +426,32 @@ uint64_t CircularLog<StaticConfig>::eaet(){
 }
 
 template <class StaticConfig>
-uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* out_theta){
+uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* out_theta, uint64_t item_size){
   double target_diff = target_hit_ratio - last_hit_rate[tenant_id_];
-  uint64_t eaet_log_size = 0;
+  uint64_t parda_log_size = 0;
   uint64_t msize = 1024 * 1024;
   double upper_error = 0.03;
-  //if(target_diff < -upper_error || target_diff > 0){//误差较大或没达到命中率
-    uint64_t granularity_size = 2 * msize; //2M
-    uint64_t max_memory = max_virtual_space_size;//4G
-    rthCalcMRC(rth, max_memory, granularity_size);
-    uint64_t tmpsize = get_eaet_size(rth, max_memory, granularity_size, target_hit_ratio);//EAET size
-    printf(YELLOW"lcore%ld tenant%d origin EAET log size:%lu\n"NONE, local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(tmpsize));
-    uint64_t bias1 = supplement_of_stage_one(rth, tmpsize, tenant_id_);//first bias
-    uint64_t bias2 = supplement_of_stage_two(rth, tmpsize + bias1, tenant_id_, out_theta);//second bias
-    eaet_log_size = tmpsize + bias1 + bias2;// eaet + second bias
-    printf(YELLOW"eaet=%lu bias1=%lu bias2=%lu\n", tmpsize, bias1, bias2);
-    printf(YELLOW"lcore%ld tenant%d using EAET log size:%lu\n"NONE, local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(eaet_log_size));
-  //}else{//误差小不需要调
-  //  eaet_log_size = get_size();
-  //  printf(YELLOW"lcore%ld tenant%d workload not shift! maintaining old size!\n"NONE, local_id, tenant_id_);
-  //}
-  if(eaet_log_size > max_virtual_space_size){
-    eaet_log_size = max_virtual_space_size;
+  if(target_diff < -upper_error || target_diff > 0){//误差较大或没达到命中率
+    uint64_t tmpsize = ::mica::parda::get_pred_size(parda->histogram, 128, target_hit_ratio, item_size);
+    parda_log_size = tmpsize;
+    printf(YELLOW"lcore%ld tenant%d using PARDA log size:%lu\n"NONE, 
+                              local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(parda_log_size));
+  }else{//误差小不需要调
+   parda_log_size = get_size();
+   printf(YELLOW"lcore%ld tenant%d workload not shift! maintaining old size!\n"NONE, local_id, tenant_id_);
   }
-  if(eaet_log_size < kAdjustMinimumSize) {
-    eaet_log_size = kAdjustMinimumSize;
+
+  if(parda_log_size > max_virtual_space_size){
+    parda_log_size = max_virtual_space_size;
   }
-  eaet_log_size = ::mica::util::roundup<2 * 1048576>(eaet_log_size);
-  last_log_size = eaet_log_size;
-  return eaet_log_size;
+
+  if(parda_log_size < kAdjustMinimumSize) {
+    parda_log_size = kAdjustMinimumSize;
+  }
+
+  parda_log_size = ::mica::util::roundup<2 * 1048576>(parda_log_size);
+  last_log_size = parda_log_size;
+  return parda_log_size;
 }
 
 template <class StaticConfig>
@@ -475,7 +473,7 @@ uint64_t CircularLog<StaticConfig>::fine_grained_adjustment(double diff_time){
       }else{//-upper_error~0
         log_size = get_size();
         firsttime = timewatcher.now();
-        eaet_calculation = 0;
+        parda_calculation = 0;
         sample_flag = true;
         printf(YELLOW"lcore%ld tenant%d finish adjustment!\n"NONE, local_id, tenant_id_);
         next_adjust_time = log_adjust_interval + wait_interval;//重置
@@ -486,12 +484,15 @@ uint64_t CircularLog<StaticConfig>::fine_grained_adjustment(double diff_time){
       log_size = get_size();
     }
   }
+
   if(log_size > max_virtual_space_size){
     log_size = max_virtual_space_size;
   }
+
   if(log_size < kAdjustMinimumSize) {
     log_size = kAdjustMinimumSize;
   }
+
   log_size = ::mica::util::roundup<2 * 1048576>(log_size);
   last_log_size = log_size;
   return log_size;
@@ -508,10 +509,10 @@ void CircularLog<StaticConfig>::log_resizing(){
   double diff_time = timewatcher.diff(secondtime, firsttime) / 60.0;
   
   if(diff_time > log_adjust_interval){//到了需要调整的时间
-    if(eaet_calculation == 0){
-      eaet_calculation = 1;
+    if(parda_calculation == 0){
+      parda_calculation = 1;
       //sample_flag = false;
-    }else if(eaet_calculation == 2){
+    }else if(parda_calculation == 2){
       new_log_size_ = fine_grained_adjustment(diff_time);
     }
 

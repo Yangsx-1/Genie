@@ -118,6 +118,7 @@ class Partitions : public ProcessorInterface<typename StaticConfig::Table> {
   uint32_t get_request_count(uint16_t lcore_id, uint16_t index) const;
   uint64_t get_processing_time(uint16_t lcore_id) const;
   double avg_value_length[::mica::table::BasicLTableConfig::kMaxTenantCount];
+  double avg_key_length[::mica::table::BasicLTableConfig::kMaxTenantCount];
 
  private:
   // partitions_impl/init.h

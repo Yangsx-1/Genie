@@ -3,6 +3,7 @@
 
 #include "splay.h"
 #include<cstdint>
+#include<cstring>
 
 #define DEFAULT_NBUCKETS 1000000
 #define B_OVFL   nbuckets

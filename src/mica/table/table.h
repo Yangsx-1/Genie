@@ -4,7 +4,6 @@
 
 #include "mica/common.h"
 #include "mica/table/types.h"
-#include "mica/eaet/eaet_impl.h"
 
 namespace mica {
 namespace table {

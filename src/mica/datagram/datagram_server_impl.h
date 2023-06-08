@@ -1,10 +1,11 @@
 #pragma once
 #ifndef MICA_DATAGRAM_DATAGRAM_SERVER_IMPL_H_
 #define MICA_DATAGRAM_DATAGRAM_SERVER_IMPL_H_
-#include "mica/eaet/eaet.h"
+
 #include "sys/time.h"
 #include "mica/datagram/mlp.h"
 #include "mica/datagram/rfr.h"
+#include<cmath>
 
 #define BLUE         "\033[0;32;34m"
 #define RED          "\033[0;32;31m"
@@ -291,10 +292,12 @@ void DatagramServer<StaticConfig>::check_memory_resizing(){
     ::mica::processor::BasicPartitionsConfig::Table* tmp_table = processor_->get_table(partition_number);
     for(size_t tenant_id = 0; tenant_id < tenant_count; tenant_id++){
       ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(tenant_id);
-      if(tmp_pool->eaet_calculation == 1){//需要计算
+      if(tmp_pool->parda_calculation == 1){//需要计算
         double theta = 0;
-        tmp_pool->set_new_log_size(tmp_pool->memory_estimation(partition_number, &theta));
-        tmp_pool->eaet_calculation = 2;//计算完毕
+        uint64_t item_size =  ceil(processor_->avg_value_length[tenant_id]) + 
+                              ceil(processor_->avg_key_length[tenant_id]) + 24;//basic_struct_size = 24
+        tmp_pool->set_new_log_size(tmp_pool->memory_estimation(partition_number, &theta, item_size));
+        tmp_pool->parda_calculation = 2;//计算完毕
         printf("out theta = %lf\n", theta);
         tenants_theta[tenant_id] += theta;
         tenants_theta_calculate_number[tenant_id]++;
@@ -312,7 +315,7 @@ void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id){
   size_t partition_id = 0;
   size_t partition_mask = partition_count - 1;
 
-  uint64_t eaet_calculation_mask = 16 - 1;
+  uint64_t parda_calculation_mask = 16 - 1;
 
   uint64_t bucket_mask = processor_->get_table(0)->get_bucket_mask();
   uint64_t bucket_number = bucket_mask + 1;
@@ -324,7 +327,7 @@ void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id){
   while(true){
     sleep(1);
     //time_count++;
-    //if(!(time_count & eaet_calculation_mask)) check_memory_resizing();
+    //if(!(time_count & parda_calculation_mask)) check_memory_resizing();
     check_memory_resizing();
     //printf(BLUE"cleaning partition %d index %d\n"NONE, partition_id, bucket_index);
     processor_->get_table(partition_id)->cleanup_specified_bucket(bucket_index, clean_number);
@@ -631,6 +634,7 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     double avg_value_length = static_cast<double>(total_value_length) /
         static_cast<double>(std::max(total_operations_done - total_get_operations_done, uint64_t(1)));
     this->processor_->avg_value_length[tenant_id] = avg_value_length;
+    this->processor_->avg_key_length[tenant_id] = avg_key_length;
 
     double tput = static_cast<double>(total_operations_done) / time_diff / 1000000.;
 

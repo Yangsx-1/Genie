@@ -3,7 +3,7 @@
 
 #include<stdlib.h>
 #include<cstring>
-
+#include<unordered_map>
 namespace mica{
 namespace eaet{
 const size_t item_number = 2;
@@ -53,6 +53,16 @@ class rthRec
     uint64_t read_rtd[rth_RTD_LENGTH];
     STable timehash;
     //std::unordered_map<uint64_t, std::pair<uint64_t, uint64_t>> statistichash;
+    // struct rrecord{
+    //   uint64_t last_time;
+    //   uint64_t access_time;
+    //   uint64_t total_reuse;
+
+    //   rrecord() : last_time(0), access_time(0), total_reuse(0) {}
+    // };
+    // uint64_t op_n;
+    // std::unordered_map<uint64_t, rrecord> get_reuse_map;
+    // std::unordered_map<uint64_t, rrecord> set_reuse_map;
 
     rthRec(){
       mrc = nullptr;

@@ -8,7 +8,7 @@
 #include "mica/util/roundup.h"
 #include "mica/util/safe_cast.h"
 #include "mica/alloc/hugetlbfs_shm.h"
-#include "mica/eaet/eaet.h"
+#include "mica/parda/parda.h"
 #include "mica/util/stopwatch.h"
 #include <atomic>
 
@@ -62,7 +62,7 @@ class CircularLog : public PoolInterface {
   uint64_t eaet();//calculate the mrc
   void log_resizing();//update parameters  
   uint64_t compute_new_log_size(double diff_time);
-  uint64_t memory_estimation(size_t local_id, double* out_theta);
+  uint64_t memory_estimation(size_t local_id, double* out_theta, uint64_t item_size);
   uint64_t fine_grained_adjustment(double diff_time);
 
   void lock();
@@ -106,8 +106,8 @@ class CircularLog : public PoolInterface {
   void update_log_size();
   uint32_t get_poolstruct_item_size();
 
-  ::mica::eaet::rthRec* rth;
-  volatile int eaet_calculation;//0不需要计算//1需要计算//2计算完毕
+  ::mica::parda::program_data_t* parda;
+  volatile int parda_calculation;//0不需要计算//1需要计算//2计算完毕
   bool sample_flag;//是否需要sample
 
  private:

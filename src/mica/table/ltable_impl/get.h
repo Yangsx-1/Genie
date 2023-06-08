@@ -1,7 +1,8 @@
 #pragma once
 #ifndef MICA_TABLE_LTABLE_IMPL_GET_H_
 #define MICA_TABLE_LTABLE_IMPL_GET_H_
-#include "mica/eaet/eaet.h"
+
+#include "mica/parda/parda.h"
 namespace mica {
 namespace table {
 template <class StaticConfig>
@@ -106,7 +107,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     }
 
     //if (invalid_value_length || !Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
-      if (invalid_value_length) {
+    if (invalid_value_length) {
       /*如果是不可用，还要将bucket锁住才能置为0*/
       if (version_start != read_version_end(bucket)) continue;
 
@@ -136,10 +137,10 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
 
     stat_inc(&Stats::get_found);
 
-    if (allow_mutation)
-      const_cast<LTable<StaticConfig>*>(this)->move_to_head(
-          const_cast<Bucket*>(bucket), const_cast<Bucket*>(located_bucket),
-          item, key_length, value_length, item_index, item_vec, item_wrap_number, item_offset);
+    // if (allow_mutation)
+    //   const_cast<LTable<StaticConfig>*>(this)->move_to_head(
+    //       const_cast<Bucket*>(bucket), const_cast<Bucket*>(located_bucket),
+    //       item, key_length, value_length, item_index, item_vec, item_wrap_number, item_offset, key_hash);
 
     break;
   }
@@ -149,7 +150,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     return Result::kPartialValue;
   }
   else{
-    if(operation_pool->sample_flag) setStatistics(operation_pool->rth, key_hash, item_size, true);
+    if(operation_pool->sample_flag) ::mica::parda::pardaStatistics(key_hash, operation_pool->parda);
     return Result::kGetSuccess;
   }
   

@@ -115,7 +115,7 @@ static inline void process_one_access(uint64_t keyhash, program_data_t* pdt) {
             pdt->histogram[B_OVFL] += 1;
         else
             pdt->histogram[distance] += 1;
-        printf("distance=%d lookup=%lu\n", distance, lookup);
+        //printf("distance=%d lookup=%lu\n", distance, lookup);
     }
     pdt->n++;
 }
@@ -146,6 +146,7 @@ uint64_t get_pred_size(uint32_t* histogram, uint64_t sample_rate, double target,
     return dist_index * sample_rate * item_size;
 }
 
+int sample_rate_index = 0;
 uint64_t need_sample_mask = (uint64_t(1) << 17) - 1;//2^17 - 1(128 * 1024 - 1)
 uint64_t need_sample_comp = 1024;
 uint64_t need_sample_masks[7] = {(uint64_t(1) << 10) - 1, (uint64_t(1) << 13) - 1, (uint64_t(1) << 15) - 1,

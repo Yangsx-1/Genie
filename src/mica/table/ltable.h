@@ -8,7 +8,6 @@
 #include "mica/util/config.h"
 #include "mica/util/memcpy.h"
 #include "mica/table/ltable_impl/specialization.h"
-#include "mica/eaet/eaet_impl.h"
 
 // Configuration file entries for LTable:
 //
@@ -249,7 +248,7 @@ class LTable : public TableInterface {
   // ltable_impl/move_to_head.h
   void move_to_head(Bucket* bucket, Bucket* located_bucket, const Item* item,
                     size_t key_length, size_t value_length, size_t item_index,
-                    uint64_t item_vec, uint16_t item_wrap_number, uint64_t item_offset);
+                    uint64_t item_vec, uint16_t item_wrap_number, uint64_t item_offset, uint64_t key_hash);
 
   // ltable_impl/lock.h
   void lock_bucket(Bucket* bucket);

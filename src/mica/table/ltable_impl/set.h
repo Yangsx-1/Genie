@@ -11,7 +11,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
                                  size_t value_length, bool overwrite) {
   assert(key_length <= kMaxKeyLength);
   assert(value_length <= kMaxValueLength);
-  
+
 
   uint32_t bucket_index = calc_bucket_index(key_hash);
   uint8_t tenant_id = calc_tenant_id(key);
@@ -111,7 +111,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
           pool_->unlock();
 
         unlock_bucket(bucket);
-        if(pool_->sample_flag) setStatistics(pool_->rth, key_hash, old_item_size, false);
+        if(pool_->sample_flag) ::mica::parda::pardaStatistics(key_hash, pool_->parda);
         return Result::kSuccess;
       }
     }
@@ -183,7 +183,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
   }
 
   stat_inc(&Stats::count);
-  if(pool_->sample_flag) setStatistics(pool_->rth, key_hash, new_item_size + pool_->get_poolstruct_item_size(), false);
+  if(pool_->sample_flag) ::mica::parda::pardaStatistics(key_hash, pool_->parda);
   return Result::kSuccess;
 }
 
@@ -363,9 +363,7 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
   }
 
   stat_inc(&Stats::count);
-  /*bool need_sample = getStatistics(rth, key_hash, 40, false);
-  if(need_sample) located_bucket->item_vec[item_index] |= (uint64_t(1) << 39);*/
-  if(pool_->sample_flag) setStatistics(pool_->rth, key_hash, new_item_size + pool_->get_poolstruct_item_size(), true);
+  if(pool_->sample_flag) ::mica::parda::pardaStatistics(key_hash, pool_->parda);
   return Result::kReloadSuccess;
 }
 }
