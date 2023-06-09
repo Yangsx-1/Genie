@@ -47,7 +47,7 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
       // allocate new space
       //uint64_t new_item_offset_for_cleanup = pool_->get_tail_for_cleanup();
 
-      uint64_t new_item_offset = pool_->allocate(item_size, key_hash);
+      uint64_t new_item_offset = pool_->allocate(item_size);
       uint16_t new_item_wrap_number = pool_->get_wrap_around_number();
       //uint64_t new_tail = Specialization::get_tail(pool_);
 

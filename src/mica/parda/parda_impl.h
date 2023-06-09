@@ -158,7 +158,7 @@ uint64_t get_pred_size(uint32_t* histogram, uint64_t sample_rate, double target,
     return dist_index * sample_rate * item_size;
 }
 
-uint64_t need_sample_mask = (uint64_t(1) << 17) - 1;//2^17 - 1(128 * 1024 - 1)
+uint64_t need_sample_mask = (uint64_t(1) << 20) - 1;//2^17 - 1(128 * 1024 - 1)
 uint64_t need_sample_comp = 1024;
 uint64_t need_sample_masks[7] = {(uint64_t(1) << 10) - 1, (uint64_t(1) << 13) - 1, (uint64_t(1) << 15) - 1,
                                 (uint64_t(1) << 16) - 1, (uint64_t(1) << 17) - 1, (uint64_t(1) << 18) - 1, (uint64_t(1) << 20) - 1};
