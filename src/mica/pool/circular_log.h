@@ -62,8 +62,11 @@ class CircularLog : public PoolInterface {
   uint64_t eaet();//calculate the mrc
   void log_resizing();//update parameters  
   uint64_t compute_new_log_size(double diff_time);
-  uint64_t memory_estimation(size_t local_id, double* out_theta, uint64_t item_size);
+  uint64_t memory_estimation(size_t local_id, uint64_t item_size);
   uint64_t fine_grained_adjustment(double diff_time);
+  double theta_calculation();
+  int stage_index = 0;
+  uint64_t init_time = 0;
 
   void lock();
   void unlock();
@@ -163,6 +166,7 @@ class CircularLog : public PoolInterface {
   uint64_t firsttime, secondtime;//时间控制
   ::mica::util::Stopwatch timewatcher;
   double log_adjust_interval;//log调整间隔
+  double next_shrink_time = 0;
 
   // internally, pool uses full 64-bit numbers for head and tail
   // however, the valid range for item_offset is limited to

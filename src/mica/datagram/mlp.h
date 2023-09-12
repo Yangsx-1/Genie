@@ -106,6 +106,7 @@ void MultilayerPerceptron(const double * input, const uint64_t input_length, dou
     *output = B_2_TO_O;
     for(int i = 0; i < SECOND_HIDDEN_LAYER_DIM; ++i)
         *output += W_2_TO_O[i] * hidden2->data[i];
+    if(*output < 0) *output = 0;
     DeleteVector(hidden1);
     DeleteVector(hidden2);
 }

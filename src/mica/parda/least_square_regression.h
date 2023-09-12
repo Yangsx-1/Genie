@@ -7,7 +7,6 @@
 #include<deque>
 #include<cassert>
 
-
 float ln(float x);
 double pow_approx(double a, double b);
 uint64_t leastSquareRegression(float logX[], float logY[], uint64_t length, struct avg *avgResult, struct skew *skewResult);
@@ -151,7 +150,7 @@ double skewEstimation(uint32_t initAccessTime[], uint64_t length){
         skewResult.theta = 0;
     }else{
         if(skewResult.theta < 0) skewResult.theta = 0;
-        else if(skewResult.theta > 0.99) skewResult.theta = 0.99; 
+        //else if(skewResult.theta > 0.99) skewResult.theta = 0.99; 
     }
 
     return skewResult.theta;
@@ -175,32 +174,3 @@ void uptodown(uint32_t* heap, int k, int pos)
 		}
 	}
 }
-
-/*void create_heap(std::vector<uint32_t>& heap, int k)
-{
-	int pos = k / 2 - 1;
-	for (int i = pos; i >= 0; i--)
-	{
-		uptodown(heap, k, i);
-	}
-}
-
-std::vector<uint32_t> GetMaxNumbers(std::vector<uint32_t> input, int k) {
-	std::vector<uint32_t> nums = input;
-	std::vector<uint32_t> heap(k, 0);
-	for (int i = 0; i < k; ++i)
-	{
-		heap[i] = nums[i];
-	}
-	create_heap(heap, k);
-	for (int i = k; i < nums.size(); ++i)
-	{
-		if (nums[i] > heap[0])
-		{
-			heap[0] = nums[i];
-			uptodown(heap, k, 0);
-		}
-	}
-    sort(heap.begin(), heap.end(), std::greater<int>());
-    return heap;
-}*/

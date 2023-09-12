@@ -4,8 +4,8 @@
 
 #include "sys/time.h"
 #include "mica/datagram/mlp.h"
-#include "mica/datagram/rfr.h"
 #include<cmath>
+#include<string>
 
 #define BLUE         "\033[0;32;34m"
 #define RED          "\033[0;32;31m"
@@ -13,6 +13,7 @@
 
 namespace mica {
 namespace datagram {
+uint64_t cpu_sample_index = 0;
 template <class StaticConfig>
 DatagramServer<StaticConfig>::DatagramServer(const ::mica::util::Config& config,
                                              Processor* processor,
@@ -134,7 +135,6 @@ void DatagramServer<StaticConfig>::run() {
   clean_up_thread_ = std::thread(clean_up_worker_proc_wrapper, this);
 
   reset_status();
-  //reset_tenant_status();
 
   // Launch workers.
   std::vector<std::pair<DatagramServer<StaticConfig>*, uint16_t>> args(
@@ -200,11 +200,12 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
   }
 
   uint64_t last_status_report = stopwatch_.now();
+  uint64_t last_comp_time = stopwatch_.now();
   uint32_t report_status_check = 0;
   const uint32_t report_status_check_max = 0xffff;
 
   RequestAccessor ra(this, &worker_stats_[lcore_id], lcore_id);
-
+  double cpu_sample_interval = 1.0 / cpu_sample_index;
   size_t next_index = 0;
   while (!stopping_) {
     auto& rx_tx_state = rx_tx_states[next_index];
@@ -247,20 +248,26 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
     check_pending_tx_timeout(rx_tx_state, now);
 
     // See if we need to report the status.
-    if (lcore_id == 0 && ++report_status_check >= report_status_check_max) {
+    if (lcore_id == 0) { //&& ++report_status_check >= report_status_check_max) {
       report_status_check = 0;
 
       double time_diff = stopwatch_.diff(now, last_status_report);
-      if (time_diff >= 1.) {
-        last_status_report = now;
+      double last_comp_diff = stopwatch_.diff(now, last_comp_time);
+      if (last_comp_diff >= cpu_sample_interval) {
+
         double running_time = stopwatch_.diff(now, core0_start_time);
-        printf("Now running time is %.4lf sec / %.4lf min\n", running_time, running_time / 60.0);
+        
         if(running_time > 600){
           printf("Running over!\n");
           exit(0);
         } 
-        report_status(time_diff);
-        report_tenant_status(time_diff);
+        if(time_diff > 1.) {
+          printf("Now running time is %.4lf sec / %.4lf min\n", running_time, running_time / 60.0);
+          last_status_report = now;
+          report_status(time_diff);
+        }
+        last_comp_time = now;
+        report_tenant_status(time_diff, running_time);
       }
     }
 
@@ -275,10 +282,6 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
 
 template <class StaticConfig>
 int DatagramServer<StaticConfig>::clean_up_worker_proc_wrapper(void* arg) {
-  // auto v =
-  //     reinterpret_cast<std::pair<DatagramServer<StaticConfig>*, uint16_t>*>(
-  //         arg);
-  // v->first->clean_up_worker(v->second);
   auto server = reinterpret_cast<DatagramServer<StaticConfig>*>(arg);
   server->clean_up_worker(0);
   return 0;
@@ -293,16 +296,29 @@ void DatagramServer<StaticConfig>::check_memory_resizing(){
     for(size_t tenant_id = 0; tenant_id < tenant_count; tenant_id++){
       ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(tenant_id);
       if(tmp_pool->parda_calculation == 1){//需要计算
-        double theta = 0;
         uint64_t item_size =  round(processor_->avg_value_length[tenant_id]) + 
                               round(processor_->avg_key_length[tenant_id]) + 24;//basic_struct_size = 24
-        tmp_pool->set_new_log_size(tmp_pool->memory_estimation(partition_number, &theta, item_size));
+        tmp_pool->set_new_log_size(tmp_pool->memory_estimation(partition_number, item_size));
         tmp_pool->parda_calculation = 2;//计算完毕
-        printf("out theta = %lf\n", theta);
-        tenants_theta[tenant_id] += theta;
-        tenants_theta_calculate_number[tenant_id]++;
         printf(BLUE"clean up worker help lcore%d tenant%d compute size!\n"NONE, partition_number, tenant_id);
       }
+    }
+  }
+}
+
+template <class StaticConfig>
+void DatagramServer<StaticConfig>::theta_calculation(){
+  size_t partition_count = processor_->get_table_count();
+  size_t tenant_count = kTenantCount;
+  std::fill(tenants_theta.begin(), tenants_theta.end(), 0);
+  std::fill(tenants_theta_calculate_number.begin(), tenants_theta_calculate_number.end(), 0);
+  for(uint16_t partition_number = 0; partition_number < partition_count; partition_number++){
+    ::mica::processor::BasicPartitionsConfig::Table* tmp_table = processor_->get_table(partition_number);
+    for(size_t tenant_id = 0; tenant_id < tenant_count; tenant_id++){
+      ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(tenant_id);
+      double theta = tmp_pool->theta_calculation();
+      tenants_theta[tenant_id] += theta;
+      tenants_theta_calculate_number[tenant_id]++;
     }
   }
 }
@@ -326,7 +342,8 @@ void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id){
   
   while(true){
     sleep(1);
-    //time_count++;
+    time_count++;
+    if(time_count % 60 == 0) theta_calculation();
     //if(!(time_count & parda_calculation_mask)) check_memory_resizing();
     check_memory_resizing();
     //printf(BLUE"cleaning partition %d index %d\n"NONE, partition_id, bucket_index);
@@ -524,9 +541,14 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
       static_cast<double>(total_get_succeeded) /
       static_cast<double>(std::max(total_get_done, uint64_t(1)));
 
-  // double avg_packet_size = 
-  //     static_cast<double>(total_packet_size) /
-  //     static_cast<double>(std::max(rx_packets, uint64_t(1)));
+  size_t partition_count = processor_->get_table_count();
+  uint64_t total_size = 0;
+  for(uint16_t partition_number = 0; partition_number < partition_count; partition_number++){
+    ::mica::processor::BasicPartitionsConfig::Table* tmp_table = processor_->get_table(partition_number);
+    ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(0);
+    total_size += tmp_pool->get_size();
+  }
+  printf("size %lu B %lf MB %lf GB\n", total_size, 1.0 * total_size / (1024UL * 1024UL), 1.0 * total_size / (1024UL * 1024UL * 1024UL));
 
   printf("tput=%7.3lf Mops",
          static_cast<double>(total_operations_done) / time_diff / 1000000.);
@@ -542,7 +564,6 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
              static_cast<double>(std::max(tx_bursts, uint64_t(1))));
   printf(", TX_drop=%7.3lf Mpps",
          static_cast<double>(tx_dropped) / time_diff / 1000000.);
-  //printf(", avg_packet_size=%7.3lf Byte", avg_packet_size);
   printf(", RX_speed=%7.3lf Gbps", 
          static_cast<double>(rx_packet_size) * 8 / 1024 / 1024 / 1024  / time_diff);
   printf(", TX_speed=%7.3lf Gbps",
@@ -552,21 +573,10 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
 
   printf("\n");
   if (flush_status_report_) fflush(stdout);
-  // if(hit_rate > 0.9){
-  //   printf("running over!\n");
-  //   exit(0);
-  // }
 }
 
-/*template <class StaticConfig>
-void DatagramServer<StaticConfig>::reset_tenant_status() {
-  tenant_stats_.resize(0);
-  tenant_stats_.resize(::mica::table::BasicLTableConfig::kMaxTenantCount, {0, 0, 0, 0, 0});
-}*/
-
-
 template <class StaticConfig>
-void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
+void DatagramServer<StaticConfig>::report_tenant_status(double time_diff, double running_time) {
   size_t tenantCount = kTenantCount;
 
   for(size_t tenant_id = 0; tenant_id < tenantCount; tenant_id++){
@@ -644,7 +654,6 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     double infos[5] = {theta, get_ratio, avg_key_length, avg_value_length, tput};
     double cpu_usage = 0;
     MultilayerPerceptron(infos, 5, &cpu_usage);
-    //randomForestRegression(infos, 5, &cpu_usage);
 
     ::mica::pool::hit_rate_diff[tenant_id] = hit_rate - ::mica::pool::last_hit_rate[tenant_id];
     ::mica::pool::last_hit_rate[tenant_id] = hit_rate;
@@ -654,8 +663,10 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     tenants_info_[tenant_id].value_size = avg_value_length;
     tenants_info_[tenant_id].tput = tput;
     tenants_info_[tenant_id].theta = theta;
+    ::mica::pool::last_tenants_theta[tenant_id] = theta;
     tenants_info_[tenant_id].cpu_usage = cpu_usage;
 
+    if(time_diff > 1.){
     printf("tenant_id=%lu", tenant_id);
     printf(", tput=%7.3lf Mops", tput);
     printf(", success_rate=%6.2lf%%", success_rate * 100.);
@@ -666,6 +677,8 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff) {
     printf(", theta=%6.2lf", theta);
     printf(", cpu_usage=%6.2lf", cpu_usage);
     printf("\n");
+    }
+    
   }
 
   if (flush_status_report_) fflush(stdout);

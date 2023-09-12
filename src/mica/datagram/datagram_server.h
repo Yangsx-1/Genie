@@ -165,6 +165,7 @@ class DatagramServer {
   static int clean_up_worker_proc_wrapper(void* arg);
   void clean_up_worker(uint16_t lcore_id);
   void check_memory_resizing();
+  void theta_calculation();
   // TX packet handling.
   void check_pending_tx_full(RXTXState& tx_state);
   void check_pending_tx_min(RXTXState& tx_state);
@@ -174,9 +175,7 @@ class DatagramServer {
   // Diagnosis.
   void reset_status();
   void report_status(double time_diff);
-  /*todoxhj  Add tenant status*/
-  //void reset_tenant_status();
-  void report_tenant_status(double time_diff);
+  void report_tenant_status(double time_diff, double running_time);
   // Request accessor to supply the request processor with requests.
   class RequestAccessor : public ::mica::processor::RequestAccessorInterface {
    public:

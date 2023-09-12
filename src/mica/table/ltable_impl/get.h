@@ -137,10 +137,10 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
 
     stat_inc(&Stats::get_found);
 
-    // if (allow_mutation)
-    //   const_cast<LTable<StaticConfig>*>(this)->move_to_head(
-    //       const_cast<Bucket*>(bucket), const_cast<Bucket*>(located_bucket),
-    //       item, key_length, value_length, item_index, item_vec, item_wrap_number, item_offset, key_hash);
+    if (allow_mutation)
+      const_cast<LTable<StaticConfig>*>(this)->move_to_head(
+          const_cast<Bucket*>(bucket), const_cast<Bucket*>(located_bucket),
+          item, key_length, value_length, item_index, item_vec, item_wrap_number, item_offset, key_hash);
 
     break;
   }

@@ -40,7 +40,7 @@ struct BasicLTableConfig {
   static constexpr bool kCollectStats = false;
 
   //The maximum number of tenants to support.
-  static constexpr size_t kMaxTenantCount = 16;
+  static constexpr size_t kMaxTenantCount = 256;
 };
 
 struct BasicLossyLTableConfig : public BasicLTableConfig {

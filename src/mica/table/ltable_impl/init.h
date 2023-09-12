@@ -35,6 +35,7 @@ LTable<StaticConfig>::LTable(const ::mica::util::Config& config, Alloc* alloc,
     log_config.insert_bool("concurrent_read", concurrent_read);
     log_config.insert_bool("concurrent_write", concurrent_write);
     log_config.insert_uint64("numa_node", numa_node);
+    log_config.insert_uint64("partition_number", config.get("partition_number").get_uint64());
     pools_[i] = new Pool(log_config, alloc_, i);
   }
 

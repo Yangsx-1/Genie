@@ -21,12 +21,17 @@ struct DatagramServerConfig
 typedef ::mica::datagram::DatagramServer<DatagramServerConfig> Server;
 
 int main(int argc, const char* argv[]) {
-  if(argc != 3){
+  if(argc != 5){
     printf("%s WRONG PARAMETERS\n", argv[0]);
     return EXIT_FAILURE;
   }
   ::mica::pool::target_hit_ratio = atof(argv[1]);
   uint16_t thread_num = static_cast<uint16_t>(atoi(argv[2]));
+  ::mica::pool::size_number = atoi(argv[4]);
+  ::mica::pool::input_mth = atof(argv[3]);
+  //::mica::processor::input_tenant_count = atoi(argv[3]);
+  ::mica::parda::sample_rate_index = 6;
+  ::mica::datagram::cpu_sample_index = 1;
   
   ::mica::util::lcore.pin_thread(0);
 

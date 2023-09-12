@@ -15,9 +15,13 @@
 namespace mica {
 namespace pool {
 double target_hit_ratio = 0;
-const size_t kMaxTenantCount = 16;
+const size_t kMaxTenantCount = 256;
 double hit_rate_diff[kMaxTenantCount] = {0};
 double last_hit_rate[kMaxTenantCount] = {0};
+uint64_t size_number = 0;
+double input_mth = 0;
+const int stage_time[3] = {10, 20, 30};
+double last_tenants_theta[kMaxTenantCount] = {0};
 
 template <class StaticConfig>
 CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
@@ -48,11 +52,14 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   else if (!concurrent_write)
     concurrent_access_mode_ = 1;
   else
-    concurrent_access_mode_ = 2;//cocurrent read and cocurrent write
+    concurrent_access_mode_ = 2;//concurrent read and concurrent write
 
   assert(concurrent_access_mode_ == 0);
   //init_size = size;
-  size_ = size / 4;
+  uint64_t gsize = 1024UL * 1024UL * 1024UL;
+  uint64_t msize = 1024 * 1024;
+  //size_ = size_number * gsize / 8;
+  size_ = size_number * msize;
   //printf("tenant%d init size=%lu\n", tenant_id_, size_);
   mask_ = size - 1;
 
@@ -63,13 +70,14 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   wrap_around_number_ = 0;
 
   timewatcher.init_start();
-  wait_interval = 2;//interval between two adjustments
+  wait_interval = 3;//interval between two adjustments
   srand(timewatcher.now());
-  log_adjust_interval = 3 + rand() % 30 / 60.0;
-  //printf("time interval=%lf\n", log_adjust_interval);
-  next_adjust_time = log_adjust_interval + wait_interval;
+  log_adjust_interval = 3;// + config.get("partition_number").get_uint64() * 0.375;
+  printf("time interval=%lf\n", log_adjust_interval);
+  next_adjust_time = log_adjust_interval + 3;
   timewatcher.init_end();
   firsttime = timewatcher.now();
+  init_time = timewatcher.now();
 
   parda = new ::mica::parda::parda_data_t();
   parda_calculation = 0;
@@ -78,7 +86,7 @@ CircularLog<StaticConfig>::CircularLog(const ::mica::util::Config& config,
   memory_adjustment_flag_ = 0;
   log_size_calculation_flag_ = 0;
   */
-  
+  mth_thres = input_mth;
   mth_thres_ = 
     static_cast<uint64_t>(static_cast<double>(size_) * mth_thres);//hello
   ma_thres_ = 
@@ -426,29 +434,34 @@ uint64_t CircularLog<StaticConfig>::eaet(){
 }
 
 template <class StaticConfig>
-uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, double* out_theta, uint64_t item_size){
+double CircularLog<StaticConfig>::theta_calculation(){
+  double theta = ::mica::parda::theta_calculation(parda->table);
+  parda->table->cleanup_access();
+  return theta;
+}
+
+template <class StaticConfig>
+uint64_t CircularLog<StaticConfig>::memory_estimation(size_t local_id, uint64_t item_size){
   double target_diff = target_hit_ratio - last_hit_rate[tenant_id_];
   uint64_t parda_log_size = 0;
   uint64_t msize = 1024 * 1024;
-  double upper_error = 0.03;
+  double upper_error = 0.003;
   if(target_diff < -upper_error || target_diff > 0){//误差较大或没达到命中率
-    uint64_t tmpsize = ::mica::parda::get_pred_size(parda->histogram, 1024, target_hit_ratio, item_size);
+    uint64_t tmpsize = ::mica::parda::get_pred_size(parda->histogram, target_hit_ratio, item_size);
     parda_log_size = tmpsize;
     printf(YELLOW"lcore%ld tenant%d using PARDA log size:%lu\n"NONE, 
                               local_id, tenant_id_, ::mica::util::roundup<2 * 1048576>(parda_log_size));
-    
-    *out_theta = ::mica::parda::theta_calculation(parda->table);
   }else{//误差小不需要调
    parda_log_size = get_size();
-   printf(YELLOW"lcore%ld tenant%d workload not shift! maintaining old size!\n"NONE, local_id, tenant_id_);
+   printf(RED"lcore%ld tenant%d workload not shift! maintaining old size!\n"NONE, local_id, tenant_id_);
   }
 
   if(parda_log_size > max_virtual_space_size){
     parda_log_size = max_virtual_space_size;
   }
 
-  if(parda_log_size < kAdjustMinimumSize) {
-    parda_log_size = kAdjustMinimumSize;
+  if(parda_log_size < kMinimumSize * 2) {
+    parda_log_size = kMinimumSize * 2;
   }
 
   parda_log_size = ::mica::util::roundup<2 * 1048576>(parda_log_size);
@@ -462,26 +475,32 @@ uint64_t CircularLog<StaticConfig>::fine_grained_adjustment(double diff_time){
   double target_diff = target_hit_ratio - last_hit_rate[tenant_id_];
   uint64_t log_size;
   uint64_t msize = 1024 * 1024;
-  double upper_error = 0.03;
+  double upper_error = 0.003;
   uint64_t log_size_diff = last_log_size > get_size() ? last_log_size - get_size() : get_size() - last_log_size;
   size_t local_id = ::mica::util::lcore.lcore_id();
   if(log_size_diff >= 2 * msize){//size没调整到
     return last_log_size;
   }else{
-    if(fabs(hit_rate_diff[tenant_id_]) < 0.0003 && diff_time > next_adjust_time){//命中率稳定后调整
+    if(fabs(hit_rate_diff[tenant_id_]) < 0.005 && diff_time > next_adjust_time){//命中率稳定后调整
       if(target_diff > upper_error || target_diff < -upper_error){//>upper_error or <-upper_error
-        log_size = get_size() * (1 + target_diff * 2);
+        uint64_t supply_mem = get_size() * fabs(target_diff) * 2;
+        if(supply_mem >= kMinimumSize) log_size = get_size() * (1 + target_diff * 2);
+        else log_size = target_diff > 0 ? get_size() + kMinimumSize : get_size() - kMinimumSize;
+        next_adjust_time = diff_time + wait_interval;
       }else if(target_diff > 0){//0~upper_error
-        log_size = get_size() * (1 + upper_error);
+        uint64_t supply_mem = get_size() * fabs(target_diff) * 2;
+        if(supply_mem >= kMinimumSize) log_size = get_size() * (1 + target_diff * 2);
+        else log_size = target_diff > 0 ? get_size() + kMinimumSize : get_size() - kMinimumSize;
+        next_adjust_time = diff_time + wait_interval;
       }else{//-upper_error~0
         log_size = get_size();
         firsttime = timewatcher.now();
         parda_calculation = 0;
-        sample_flag = true;
+        //sample_flag = true;
         printf(YELLOW"lcore%ld tenant%d finish adjustment!\n"NONE, local_id, tenant_id_);
-        next_adjust_time = log_adjust_interval + wait_interval;//重置
+        next_adjust_time = log_adjust_interval + 3;//重置
+        next_shrink_time = 0;
       }
-      next_adjust_time = diff_time + wait_interval;
       printf(YELLOW"lcore%ld tenant%d second adjustment for log size!\n"NONE, local_id, tenant_id_);
     }else{//命中率不稳定
       log_size = get_size();
@@ -492,8 +511,8 @@ uint64_t CircularLog<StaticConfig>::fine_grained_adjustment(double diff_time){
     log_size = max_virtual_space_size;
   }
 
-  if(log_size < kAdjustMinimumSize) {
-    log_size = kAdjustMinimumSize;
+  if(log_size < kMinimumSize * 2) {
+    log_size = kMinimumSize * 2;
   }
 
   log_size = ::mica::util::roundup<2 * 1048576>(log_size);
@@ -507,6 +526,32 @@ void CircularLog<StaticConfig>::log_resizing(){
     fprintf(stderr, "error: concurrent_access_mode_ != 0\n");
     assert(false);
   }
+  if(last_tenants_theta[tenant_id_] > 1){
+    if(mth_thres != 0.5){
+      mth_thres = 0.5;
+      mth_thres_ = static_cast<uint64_t>(static_cast<double>(size_) * mth_thres);
+      printf(YELLOW"CHANGE CACHE POLICY!\n"NONE);
+    }
+  }else{
+    if(mth_thres != 100){
+      mth_thres = 100;
+      mth_thres_ = static_cast<uint64_t>(static_cast<double>(size_) * mth_thres);
+      printf(YELLOW"CHANGE CACHE POLICY!\n"NONE);
+    }
+  }
+  // if(timewatcher.diff(timewatcher.now(), init_time) / 60.0 > stage_time[stage_index]){
+  //   parda_calculation = 0;
+  //   firsttime = timewatcher.now();
+  //   sample_flag = true;
+  //   // if(stage_index == 0){
+  //   //   mth_thres = 100;
+  //   //   mth_thres_ = static_cast<uint64_t>(static_cast<double>(size_) * mth_thres);
+  //   //   printf(YELLOW"CHANGE CACHE POLICY!\n"NONE);
+  //   // }
+  //   stage_index++;
+  //   next_adjust_time = log_adjust_interval + 3;
+  //   printf(YELLOW"FORCE CONVERT SAMPLE STAGE!\n"NONE);
+  // }
   //size_t local_id = ::mica::util::lcore.lcore_id();
   secondtime = timewatcher.now();
   double diff_time = timewatcher.diff(secondtime, firsttime) / 60.0;
@@ -519,10 +564,13 @@ void CircularLog<StaticConfig>::log_resizing(){
       new_log_size_ = fine_grained_adjustment(diff_time);
     }
 
+    // uint64_t msize = 1024 * 1024;
+    // new_log_size_ = size_ + 16 * msize;
+    // log_adjust_interval += 0.5;
     if(new_log_size_ == size_){
       if(size_ - tail_ < kMinimumSize){//这一轮的数据已经写到最后一个page上了
-        printf(YELLOW"lcore%lu tenant%u now time is %lf, wrap number %d\n"NONE, ::mica::util::lcore.lcore_id(), tenant_id_, diff_time,
-                                                            wrap_around_number_);
+        // printf(YELLOW"lcore%lu tenant%u now time is %lf, wrap number %d\n"NONE, ::mica::util::lcore.lcore_id(), tenant_id_, diff_time,
+        //                                                     wrap_around_number_);
         update_log_parameter();
       }
     }else if(new_log_size_ > size_){
@@ -535,6 +583,19 @@ void CircularLog<StaticConfig>::log_resizing(){
       }
       if(data_ != tmp_data_) update_log_size();
     }else{//new_log_size_ < size_
+      if(last_hit_rate[tenant_id_] > 0.95 && diff_time > next_shrink_time){
+        new_log_size_ = size_ * 0.95 > new_log_size_ ? size_ * 0.95 : new_log_size_;
+        new_log_size_ = ::mica::util::roundup<2 * 1048576>(new_log_size_);
+        data_ = reinterpret_cast<char*>(alloc_->memory_adjustment(entry_id_, (size_t)new_log_size_, data_));
+        if(data_ == nullptr){
+          fprintf(stderr, "error: failed to adjustment log memory\n");
+          assert(false);
+        }
+        update_log_size();
+        update_log_parameter();
+        next_shrink_time = diff_time + 0.25;
+        return;
+      }
       if(tail_ <= new_log_size_){
         /**
          * @description: log size很大有可能会导致tail不会再往后写，如1/2 * logsize > working set size
@@ -563,8 +624,8 @@ void CircularLog<StaticConfig>::log_resizing(){
   }else{//没到需要调整的时间，不需要更改log size，只需要判断并更新参数
     if(size_ > tail_){
       if(size_ - tail_ < kMinimumSize){//这一轮的数据已经写到最后一个page上了
-        printf(YELLOW"lcore%lu tenant%u now time is %lf, wrap number %d\n"NONE, ::mica::util::lcore.lcore_id(), tenant_id_, diff_time,
-                                                            wrap_around_number_);
+        // printf(YELLOW"lcore%lu tenant%u now time is %lf, wrap number %d\n"NONE, ::mica::util::lcore.lcore_id(), tenant_id_, diff_time,
+        //                                                     wrap_around_number_);
         update_log_parameter();
       }
     }

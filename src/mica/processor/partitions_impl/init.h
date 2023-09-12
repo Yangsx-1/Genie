@@ -101,13 +101,14 @@ void Partitions<StaticConfig>::initialize() {
     table_config.insert_uint64("numa_node",
                                ::mica::util::lcore.numa_id(current_lcore_id));
     table_config.insert_uint64("tenant_count", kTenantCount);
+    table_config.insert_uint64("partition_number", i);
     //table_config.insert_double("mth_threshold", mth_threshold_);
 
     owner_lcore_ids_[i] = current_lcore_id;
     //pools_[i] = new Pool(pool_config, alloc_);
     //printf("start init partition%d\n", i);
     tables_[i] = new Table(table_config, alloc_, size_per_table_);
-    //printf("finish init partition%d\n", i);
+    printf("finish init partition%d\n", i);
     if (StaticConfig::kVerbose) {
       printf("= Partition %zu at lcore %hu\n", i, current_lcore_id);
       printf("== Pool config\n");

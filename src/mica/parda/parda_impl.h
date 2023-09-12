@@ -4,13 +4,16 @@
 #include "parda.h"
 #include "least_square_regression.h"
 #include<climits>
+#include<fstream>
+#include<string>
+#include "mica/util/lcore.h"
 
 namespace mica{
 namespace parda{
 
 STable::STable()
 {
-    size_t num_buckets = 1048576;// 65536;
+    size_t num_buckets = 32 * 1048576;// 65536;
     num_buckets_ = (uint64_t)num_buckets;
     num_buckets_mask_ = (uint64_t)(num_buckets - 1);
 
@@ -91,6 +94,15 @@ void STable::cleanup_all(){
     }
 }
 
+void STable::cleanup_access(){
+    for(uint64_t bucket_index = 0; bucket_index < num_buckets_; bucket_index++){
+        for(uint64_t item_index = 0; item_index < item_number; item_index++){
+            if(buckets_[bucket_index].item_vec[item_index].keyhash == 0) continue;
+            buckets_[bucket_index].item_vec[item_index].total_access_time = 0;
+        }
+    }
+}
+
 /*size_t STable::size(){
     size_t numbers = 0;
     for(size_t bucket_index = 0; bucket_index < num_buckets_; bucket_index++){
@@ -132,20 +144,29 @@ static inline void process_one_access(uint64_t keyhash, parda_data_t* pdt) {
     pdt->n++;
 }
 
-uint64_t get_pred_size(uint32_t* histogram, uint64_t sample_rate, double target, uint64_t item_size){
+int sample_rate_index = 0;
+uint64_t need_sample_mask = (uint64_t(1) << 20) - 1;//2^17 - 1(128 * 1024 - 1)
+uint64_t need_sample_comp = 1024;
+uint64_t need_sample_masks[8] = {(uint64_t(1) << 10) - 1, (uint64_t(1) << 13) - 1, (uint64_t(1) << 15) - 1,
+                                (uint64_t(1) << 16) - 1, (uint64_t(1) << 17) - 1, (uint64_t(1) << 18) - 1, 
+                                (uint64_t(1) << 20) - 1, (uint64_t(1) << 30) - 1};
+uint64_t sample_timex[8] = {1, 8, 32, 64, 128, 256, 1024, 1024 * 1024};
+
+uint64_t get_pred_size(uint32_t* histogram, double target, uint64_t item_size){
+    uint64_t sample_rate = sample_timex[sample_rate_index];
     int last_bucket = nbuckets - 1;
     uint64_t sum = 0;
     uint64_t cum = 0;
-    uint64_t dist_index;
+    uint64_t dist_index = 0;
     while (histogram[last_bucket] == 0)
         last_bucket--;
     
-    for (int i = 0; i <= last_bucket; i++)
+    for (size_t i = 0; i <= last_bucket; i++)
         sum += histogram[i];
     sum += histogram[B_OVFL];
     sum += histogram[B_INF];
 
-    for (int i = 0; i <= last_bucket; i++) {
+    for (size_t i = 0; i <= last_bucket; i++) {
         cum += histogram[i];
         double cum_rate = 1.0 * cum / sum;
         if(cum_rate > target){
@@ -158,13 +179,8 @@ uint64_t get_pred_size(uint32_t* histogram, uint64_t sample_rate, double target,
     return dist_index * sample_rate * item_size;
 }
 
-uint64_t need_sample_mask = (uint64_t(1) << 20) - 1;//2^17 - 1(128 * 1024 - 1)
-uint64_t need_sample_comp = 1024;
-uint64_t need_sample_masks[7] = {(uint64_t(1) << 10) - 1, (uint64_t(1) << 13) - 1, (uint64_t(1) << 15) - 1,
-                                (uint64_t(1) << 16) - 1, (uint64_t(1) << 17) - 1, (uint64_t(1) << 18) - 1, (uint64_t(1) << 20) - 1};
-
 bool set_sampling(uint64_t keyhash){
-    return ((keyhash & need_sample_mask) < need_sample_comp);
+    return ((keyhash & need_sample_masks[sample_rate_index]) < need_sample_comp);
 }
 
 void pardaStatistics(uint64_t keyhash, parda_data_t* pdt){

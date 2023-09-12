@@ -5,7 +5,7 @@
 #include<cstdint>
 #include<cstring>
 
-#define DEFAULT_NBUCKETS 1000000
+#define DEFAULT_NBUCKETS 100000000
 #define B_OVFL   nbuckets
 #define B_INF    nbuckets+1
 #define SLEN 20
@@ -36,6 +36,7 @@ class STable{
   void add_item(uint64_t keyhash, uint64_t curr_time, Bucket* curr_bucket, size_t item_index);
   //void cleanup_bucket(Bucket* bucket);
   void cleanup_all();
+  void cleanup_access();
   //size_t size();
 
   uint32_t num_buckets_;
@@ -69,7 +70,7 @@ typedef struct parda_data_t {
 };
 
 static inline void process_one_access(uint64_t keyhash, parda_data_t* pdt);
-uint64_t get_pred_size(uint32_t* histogram, uint64_t sample_rate, double target, uint64_t item_size);
+uint64_t get_pred_size(uint32_t* histogram, double target, uint64_t item_size);
 void pardaStatistics(uint64_t keyhash, parda_data_t* pdt);
 double theta_calculation(STable* table);
 void clean_up_parda(parda_data_t* pdt);
