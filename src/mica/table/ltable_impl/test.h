@@ -33,7 +33,7 @@ Result LTable<StaticConfig>::test(uint64_t key_hash, const char* key,
   }
   // Not reachable.
 }
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

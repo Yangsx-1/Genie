@@ -43,114 +43,107 @@ namespace example {
  * defined wrapper as song as it implements a similar interface
  */
 class RapidReply {
-  public:
-    // Types
-    typedef std::map<std::string, std::string> KvPairs;
+ public:
+  // Types
+  typedef std::map<std::string, std::string> KvPairs;
 
-    // LIFECYCLE
-    RapidReply(const std::string& reply)
-      :document_(),
-       header_() {
-        _Parse(reply);
+  // LIFECYCLE
+  RapidReply(const std::string& reply) : document_(), header_() {
+    _Parse(reply);
+  }
+
+  RapidReply(const std::string& header, const std::string& reply)
+      : document_(), header_(header) {
+    _Parse(reply);
+  }
+
+  // OPERATIONS
+  void Print() const {
+    rapidjson::StringBuffer strbuf;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+    document_.Accept(writer);
+    std::cerr << strbuf.GetString() << '\n';
+  }
+
+  void GetAll(KvPairs& kvPairs) {
+    if (!document_.HasMember(kNode)) {
     }
+    //ToDo check whether prefix should be "/"
+    return _GetAll(document_[kNode], kvPairs);
+  }
 
-    RapidReply(
-        const std::string& header,
-        const std::string& reply)
-     :document_(),
-      header_(header) {
-        _Parse(reply);
+  etcd::Action GetAction() {
+    if (!document_.HasMember(kAction)) {
+      return etcd::Action::UNKNOWN;
     }
-
-    // OPERATIONS
-    void Print() const {
-        rapidjson::StringBuffer strbuf;
-        rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
-        document_.Accept(writer);
-        std::cerr << strbuf.GetString() << '\n';
+    CAM_II iter = kActionMap.find(document_[kAction].GetString());
+    if (iter == kActionMap.end()) {
+      return etcd::Action::UNKNOWN;
     }
+    return iter->second;
+  }
 
-    void GetAll(KvPairs& kvPairs) {
-        if (! document_.HasMember(kNode)) {
-        }
-        //ToDo check whether prefix should be "/"
-        return _GetAll(document_[kNode], kvPairs);
+  etcd::Index GetModifiedIndex() const {
+    if ((!document_.HasMember(kNode)) ||
+        (!document_[kNode].HasMember(kModifiedIndex))) {
+      throw std::runtime_error("possibly timed out");
     }
+    return document_[kNode][kModifiedIndex].GetUint64();
+  }
 
-    etcd::Action GetAction() {
-        if (! document_.HasMember(kAction)) {
-            return etcd::Action::UNKNOWN;
-        }
-        CAM_II iter = kActionMap.find (document_[kAction].GetString());
-        if (iter == kActionMap.end()) {
-            return etcd::Action::UNKNOWN;
-        }
-        return iter->second;
+ private:
+  // TYPES
+  typedef etcd::ResponseActionMap::const_iterator CAM_II;
+
+  // CONSTANTS
+  const char* kErrorCode = "errorCode";
+  const char* kMessage = "message";
+  const char* kCause = "cause";
+  const char* kNode = "node";
+  const char* kModifiedIndex = "modifiedIndex";
+  const char* kNodes = "nodes";
+  const char* kDir = "dir";
+  const char* kKey = "key";
+  const char* kValue = "value";
+  const char* kAction = "action";
+  const etcd::ResponseActionMap kActionMap;
+
+  // DATA MEMBERS
+  rapidjson::Document document_;
+  std::string header_;
+
+  // OPERATIONS
+  void _CheckError() {
+    if (document_.HasMember(kErrorCode)) {
+      throw etcd::ReplyException(document_[kErrorCode].GetInt(),
+                                 document_[kMessage].GetString(),
+                                 document_[kCause].GetString());
     }
+  }
 
-    etcd::Index GetModifiedIndex() const {
-        if ((! document_.HasMember(kNode)) ||
-            (!document_[kNode].HasMember(kModifiedIndex))) {
-            throw std::runtime_error("possibly timed out");
-        }
-        return document_[kNode][kModifiedIndex].GetUint64();
-    }
+  void _Parse(const std::string& json) {
+    document_.Parse(json.c_str());
+    _CheckError();
+  }
 
-  private:
-    // TYPES
-    typedef etcd::ResponseActionMap::const_iterator CAM_II;
-
-    // CONSTANTS
-    const char *kErrorCode ="errorCode";
-    const char *kMessage = "message";
-    const char *kCause ="cause";
-    const char *kNode = "node";
-    const char *kModifiedIndex = "modifiedIndex";
-    const char *kNodes = "nodes";
-    const char *kDir = "dir";
-    const char *kKey = "key";
-    const char *kValue = "value";
-    const char* kAction = "action";
-    const etcd::ResponseActionMap kActionMap;
-
-    // DATA MEMBERS
-    rapidjson::Document document_;
-    std::string header_;
-
-    // OPERATIONS
-    void _CheckError() { 
-        if (document_.HasMember(kErrorCode)) {
-            throw etcd::ReplyException(document_[kErrorCode].GetInt(),
-                    document_[kMessage].GetString(),
-                    document_[kCause].GetString());
-        }
-    }
-
-    void _Parse(const std::string& json) {
-        document_.Parse(json.c_str());
-        _CheckError();
-    }
-
-    void _GetAll(const rapidjson::Value& doc, KvPairs& kvPairs) {
-        if (doc.HasMember(kDir) && (doc[kDir].GetBool() == true)) {
-            if (!doc.HasMember(kNodes))
-                return;  // directory doesn't have nodes
-            const rapidjson::Value& nodes = doc[kNodes];
-            assert(nodes.IsArray());
-            for (size_t i = 0; i < nodes.Size(); ++i)
-                _GetAll(nodes[i], kvPairs);
+  void _GetAll(const rapidjson::Value& doc, KvPairs& kvPairs) {
+    if (doc.HasMember(kDir) && (doc[kDir].GetBool() == true)) {
+      if (!doc.HasMember(kNodes)) return;  // directory doesn't have nodes
+      const rapidjson::Value& nodes = doc[kNodes];
+      assert(nodes.IsArray());
+      for (size_t i = 0; i < nodes.Size(); ++i) _GetAll(nodes[i], kvPairs);
+    } else {
+      if (doc.HasMember(kKey)) {
+        if (doc.HasMember(kValue)) {
+          kvPairs.emplace(doc[kKey].GetString(), doc[kValue].GetString());
         } else {
-            if (doc.HasMember(kKey)) {
-                if (doc.HasMember(kValue)) {
-                    kvPairs.emplace(doc[kKey].GetString(), doc[kValue].GetString());
-                } else {
-                    kvPairs.emplace(doc[kKey].GetString(), "");
-                }
-            }
+          kvPairs.emplace(doc[kKey].GetString(), "");
         }
+      }
     }
+  }
 };
 
-} // namespace example
+}  // namespace example
 
-#endif // __RAPID_REPLY_HPP_INCLUDED__
+#endif  // __RAPID_REPLY_HPP_INCLUDED__

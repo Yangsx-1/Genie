@@ -35,7 +35,7 @@ class RandPhilox {
   ::tensorflow::random::PhiloxRandom::ResultType result_;
   int i_;
 };
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

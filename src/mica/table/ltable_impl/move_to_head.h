@@ -5,11 +5,10 @@
 namespace mica {
 namespace table {
 template <class StaticConfig>
-void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
-                                        const Item* item, size_t key_length,
-                                        size_t value_length, size_t item_index,
-                                        uint64_t item_vec, uint16_t item_wrap_number,
-                                        uint64_t item_offset, uint64_t key_hash) {
+void LTable<StaticConfig>::move_to_head(
+    Bucket* bucket, Bucket* located_bucket, const Item* item, size_t key_length,
+    size_t value_length, size_t item_index, uint64_t item_vec,
+    uint16_t item_wrap_number, uint64_t item_offset, uint64_t key_hash) {
   if (!std::is_base_of<::mica::pool::CircularLogTag, typename Pool::Tag>::value)
     return;
 
@@ -35,8 +34,9 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
   Pool* pool_ = pools_[get_item_tenant_id(item_vec)];
   uint64_t pool_tail = Specialization::get_tail(pool_);
   uint64_t pool_size = Specialization::get_size(pool_);
-  uint64_t distance_from_tail = 
-    (item_offset < pool_tail) ? (pool_tail - item_offset) :  (pool_size - item_offset + pool_tail);
+  uint64_t distance_from_tail = (item_offset < pool_tail)
+                                    ? (pool_tail - item_offset)
+                                    : (pool_size - item_offset + pool_tail);
 
   if (distance_from_tail > pool_->get_mth_thres()) {
     lock_bucket(bucket);
@@ -57,13 +57,14 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
       // pool::allocate() by this thread or other threads may
       // have invalidated it
       if (Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
-        Item* new_item =
-            reinterpret_cast<Item*>(pool_->get_item(new_item_offset));//返回的是更新之前的tail
+        Item* new_item = reinterpret_cast<Item*>(
+            pool_->get_item(new_item_offset));  //返回的是更新之前的tail
         ::mica::util::memcpy<8>(reinterpret_cast<char*>(new_item),
                                 reinterpret_cast<const char*>(item), item_size);
 
         located_bucket->item_vec[item_index] =
-            make_item_vec(get_tag(item_vec), get_item_tenant_id(item_vec), new_item_wrap_number,new_item_offset);
+            make_item_vec(get_tag(item_vec), get_item_tenant_id(item_vec),
+                          new_item_wrap_number, new_item_offset);
 
         // success
         stat_inc(&Stats::move_to_head_performed);
@@ -73,7 +74,7 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
       }
 
       // we need to hold the lock until we finish writing
-      pool_->log_resizing(); 
+      pool_->log_resizing();
       pool_->unlock();
       unlock_bucket(bucket);
 
@@ -98,7 +99,7 @@ void LTable<StaticConfig>::move_to_head(Bucket* bucket, Bucket* located_bucket,
     stat_inc(&Stats::move_to_head_skipped);
   }
 }
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

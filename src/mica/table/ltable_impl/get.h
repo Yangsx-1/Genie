@@ -26,7 +26,8 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     size_t item_index = find_item_index(bucket, key_hash, tag, key, key_length,
                                         &located_bucket);
     if (item_index == StaticConfig::kBucketSize) {
-      if (version_start != read_version_end(bucket)) continue;//数据在被编辑，就等待
+      if (version_start != read_version_end(bucket))
+        continue;  //数据在被编辑，就等待
       stat_inc(&Stats::get_notfound);
       return Result::kGetNotFound;
     }
@@ -35,7 +36,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     uint64_t item_offset = get_item_offset(item_vec);
     uint16_t item_wrap_number = get_item_wrap_around_number(item_vec);
     uint8_t tenant_id = get_item_tenant_id(item_vec);
-    if(tenant_id >= kTenantCount){
+    if (tenant_id >= kTenantCount) {
       printf("Too many tenants!\n");
       exit(EXIT_FAILURE);
     }
@@ -49,7 +50,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
      * lock the bucket and set the corresponding vec to zero.
      */
     /*********************************************/
-    if(!Specialization::is_valid(pool_, item_wrap_number, item_offset)){
+    if (!Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
       if (version_start != read_version_end(bucket)) continue;
 
       if (allow_mutation) {
@@ -72,7 +73,6 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
 
       stat_inc(&Stats::get_notfound);
       return Result::kGetNotFound;
-
     }
     /******************************/
 
@@ -98,7 +98,7 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
       partial_value = (value_length != *out_value_length);
       ::mica::util::memcpy<8>(out_value,
                               item->data + ::mica::util::roundup<8>(key_length),
-                              *out_value_length);//这里把value拷贝到out_value
+                              *out_value_length);  //这里把value拷贝到out_value
     } else {
       // An invalid value means that a concurrent change is ongoing.
       invalid_value_length = true;
@@ -140,22 +140,22 @@ Result LTable<StaticConfig>::get(uint64_t key_hash, const char* key,
     if (allow_mutation)
       const_cast<LTable<StaticConfig>*>(this)->move_to_head(
           const_cast<Bucket*>(bucket), const_cast<Bucket*>(located_bucket),
-          item, key_length, value_length, item_index, item_vec, item_wrap_number, item_offset, key_hash);
+          item, key_length, value_length, item_index, item_vec,
+          item_wrap_number, item_offset, key_hash);
 
     break;
   }
 
-  if (partial_value){
+  if (partial_value) {
     //printf("kpartialvalue!\n");
     return Result::kPartialValue;
-  }
-  else{
-    if(operation_pool->sample_flag) ::mica::parda::pardaStatistics(key_hash, operation_pool->parda);
+  } else {
+    if (operation_pool->sample_flag)
+      ::mica::parda::pardaStatistics(key_hash, operation_pool->parda);
     return Result::kGetSuccess;
   }
-  
 }
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

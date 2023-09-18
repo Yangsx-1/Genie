@@ -15,6 +15,7 @@ Language: Cpp
 DerivePointerAlignment: false
 PointerAlignment: Left
 PointerBindsToType: true
+IndentWidth: 2
 
 # Requires clang-format v4.0+
 ReflowComments: false

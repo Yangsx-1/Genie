@@ -111,24 +111,23 @@ int worker_proc(void* arg) {
     uint32_t op_r = op_type_rand.next_u32();
     bool is_get = op_r <= get_threshold;
 
-    /*change the op type for preload*/
-    #if defined(PRELOAD)
-    if(preload_count < preload_cnt){
+/*change the op type for preload*/
+#if defined(PRELOAD)
+    if (preload_count < preload_cnt) {
       is_get = false;
       preload_count++;
     }
-    #endif
+#endif
 
     // Generate the key.
     key_i = zg.next();
     /*incremental key for preload*/
-    
-    #if defined(PRELOAD)
-    if(preload_count < preload_cnt){
+
+#if defined(PRELOAD)
+    if (preload_count < preload_cnt) {
       key_i = preload_count;
     }
-    #endif
-    
+#endif
 
     key_hash = hash(key, key_length);
 
@@ -147,9 +146,7 @@ int worker_proc(void* arg) {
       client.set(key_hash, key, key_length, value, value_length, true);
     }
 
-
     seq++;
-
   }
 
   return 0;

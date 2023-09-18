@@ -133,7 +133,7 @@ class SingleThreadedQueue {
   size_t tail_;
   std::array<T, Capacity> items_;
 };
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

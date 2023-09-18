@@ -16,12 +16,14 @@ class LTablePoolSpecialization {
 
   template <class Pool>
   static uint64_t get_size(const Pool* pool);
-/*
+  /*
   template <class Pool>
   static uint64_t get_mth_thres(const Pool* pool);
 */
   template <class Pool>
-  static bool is_valid(const Pool* pool, typename Pool::WrapAround item_wrap_number, typename Pool::Offset offset);
+  static bool is_valid(const Pool* pool,
+                       typename Pool::WrapAround item_wrap_number,
+                       typename Pool::Offset offset);
 };
 template <class PoolTag>
 template <class Pool>
@@ -92,11 +94,12 @@ bool LTablePoolSpecialization<PoolTag>::is_valid(const Pool* pool, typename Pool
 template <>
 template <class Pool>
 bool LTablePoolSpecialization<::mica::pool::CircularLogTag>::is_valid(
-    const Pool* pool, typename Pool::WrapAround item_wrap_number, typename Pool::Offset offset) {
+    const Pool* pool, typename Pool::WrapAround item_wrap_number,
+    typename Pool::Offset offset) {
   return pool->is_valid(item_wrap_number, offset);
 }
 
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

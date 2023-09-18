@@ -29,7 +29,7 @@ template <typename T>
 static uint64_t hash(const T* key, size_t len) {
   return hash_cityhash(key, len);
 }
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

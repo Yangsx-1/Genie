@@ -43,7 +43,7 @@ int main() {
   size_t out_value_length;
 
   Operation ops[1] = {Operation::kGet};  // To be filled.
-  uint64_t key_hashes[1] = {0};            // To be filled.
+  uint64_t key_hashes[1] = {0};          // To be filled.
   const char* keys[1] = {key};
   uint64_t key_lengths[1] = {key_length};
   const char* values[1] = {value};

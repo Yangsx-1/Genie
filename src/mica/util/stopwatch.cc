@@ -36,7 +36,7 @@ void Stopwatch::init_end() {
     pause();
   }
 }
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

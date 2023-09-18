@@ -2,7 +2,7 @@
 #ifndef MICA_TABLE_LTABLE_IMPL_SET_H_
 #define MICA_TABLE_LTABLE_IMPL_SET_H_
 #include "mica/util/lcore.h"
-#include<cassert>
+#include <cassert>
 namespace mica {
 namespace table {
 template <class StaticConfig>
@@ -12,10 +12,9 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
   assert(key_length <= kMaxKeyLength);
   assert(value_length <= kMaxValueLength);
 
-
   uint32_t bucket_index = calc_bucket_index(key_hash);
   uint8_t tenant_id = calc_tenant_id(key);
-  if(tenant_id >= kTenantCount){
+  if (tenant_id >= kTenantCount) {
     printf("Too many tenants!\n");
     exit(EXIT_FAILURE);
   }
@@ -86,7 +85,8 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
 
   if (overwriting) {
     item_offset = get_item_offset(located_bucket->item_vec[item_index]);
-    item_wrap_number = get_item_wrap_around_number(located_bucket->item_vec[item_index]);
+    item_wrap_number =
+        get_item_wrap_around_number(located_bucket->item_vec[item_index]);
 
     size_t old_item_size;
     /*
@@ -95,9 +95,9 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
      */
     if (Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
       Item* item =
-        reinterpret_cast<Item*>(pool_->get_item(item_offset, &old_item_size));
+          reinterpret_cast<Item*>(pool_->get_item(item_offset, &old_item_size));
 
-    //if (Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
+      //if (Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
       if (old_item_size >= new_item_size) {
         stat_inc(&Stats::set_inplace);
 
@@ -111,7 +111,8 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
           pool_->unlock();
 
         unlock_bucket(bucket);
-        if(pool_->sample_flag) ::mica::parda::pardaStatistics(key_hash, pool_->parda);
+        if (pool_->sample_flag)
+          ::mica::parda::pardaStatistics(key_hash, pool_->parda);
         return Result::kSuccess;
       }
     }
@@ -130,7 +131,8 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
   }
   //uint64_t new_tail;
   //uint64_t new_tail_for_cleanup;
-  if (std::is_base_of<::mica::pool::CircularLogTag, typename Pool::Tag>::value){
+  if (std::is_base_of<::mica::pool::CircularLogTag,
+                      typename Pool::Tag>::value) {
     //new_tail = Specialization::get_tail(pool_);
     //new_tail_for_cleanup = pool_->get_tail_for_cleanup();
   }
@@ -144,7 +146,7 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
 
   set_item(new_item, key_hash, key, (uint32_t)key_length, value,
            (uint32_t)value_length);
-  
+
   pool_->log_resizing();
 
   // unlocking is delayed until we finish writing data at the new location;
@@ -157,7 +159,8 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
     stat_dec(&Stats::count);
   }
 
-  located_bucket->item_vec[item_index] = make_item_vec(tag, tenant_id, new_item_wrap_number, new_item_offset);
+  located_bucket->item_vec[item_index] =
+      make_item_vec(tag, tenant_id, new_item_wrap_number, new_item_offset);
 
   unlock_bucket(bucket);
 
@@ -183,20 +186,21 @@ Result LTable<StaticConfig>::set(uint64_t key_hash, const char* key,
   }
 
   stat_inc(&Stats::count);
-  if(pool_->sample_flag) ::mica::parda::pardaStatistics(key_hash, pool_->parda);
+  if (pool_->sample_flag)
+    ::mica::parda::pardaStatistics(key_hash, pool_->parda);
   return Result::kSuccess;
 }
 
 template <class StaticConfig>
 Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
-                                 size_t key_length, const char* value,
-                                 size_t value_length, bool overwrite) {
+                                        size_t key_length, const char* value,
+                                        size_t value_length, bool overwrite) {
   assert(key_length <= kMaxKeyLength);
   assert(value_length <= kMaxValueLength);
 
   uint32_t bucket_index = calc_bucket_index(key_hash);
   uint8_t tenant_id = calc_tenant_id(key);
-  if(tenant_id >= kTenantCount){
+  if (tenant_id >= kTenantCount) {
     printf("Too many tenants!\n");
     exit(EXIT_FAILURE);
   }
@@ -266,7 +270,8 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
 
   if (overwriting) {
     item_offset = get_item_offset(located_bucket->item_vec[item_index]);
-    item_wrap_number = get_item_wrap_around_number(located_bucket->item_vec[item_index]);
+    item_wrap_number =
+        get_item_wrap_around_number(located_bucket->item_vec[item_index]);
 
     size_t old_item_size;
     /*
@@ -275,9 +280,9 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
      */
     if (Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
       Item* item =
-        reinterpret_cast<Item*>(pool_->get_item(item_offset, &old_item_size));
+          reinterpret_cast<Item*>(pool_->get_item(item_offset, &old_item_size));
 
-    //if (Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
+      //if (Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
       if (old_item_size >= new_item_size) {
         stat_inc(&Stats::set_inplace);
 
@@ -310,7 +315,8 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
   }
   //uint64_t new_tail;
   //uint64_t new_tail_for_cleanup;
-  if (std::is_base_of<::mica::pool::CircularLogTag, typename Pool::Tag>::value){
+  if (std::is_base_of<::mica::pool::CircularLogTag,
+                      typename Pool::Tag>::value) {
     //new_tail = Specialization::get_tail(pool_);
     //new_tail_for_cleanup = pool_->get_tail_for_cleanup();
   }
@@ -324,7 +330,7 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
 
   set_item(new_item, key_hash, key, (uint32_t)key_length, value,
            (uint32_t)value_length);
-  
+
   pool_->log_resizing();
 
   // unlocking is delayed until we finish writing data at the new location;
@@ -337,7 +343,8 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
     stat_dec(&Stats::count);
   }
 
-  located_bucket->item_vec[item_index] = make_item_vec(tag, tenant_id, new_item_wrap_number, new_item_offset);
+  located_bucket->item_vec[item_index] =
+      make_item_vec(tag, tenant_id, new_item_wrap_number, new_item_offset);
 
   unlock_bucket(bucket);
 
@@ -363,10 +370,11 @@ Result LTable<StaticConfig>::reset_item(uint64_t key_hash, const char* key,
   }
 
   stat_inc(&Stats::count);
-  if(pool_->sample_flag) ::mica::parda::pardaStatistics(key_hash, pool_->parda);
+  if (pool_->sample_flag)
+    ::mica::parda::pardaStatistics(key_hash, pool_->parda);
   return Result::kReloadSuccess;
 }
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

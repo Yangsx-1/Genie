@@ -32,7 +32,7 @@ class Rand {
  private:
   uint64_t state_;
 };
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

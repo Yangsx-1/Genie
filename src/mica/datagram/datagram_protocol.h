@@ -14,7 +14,8 @@ namespace mica {
 namespace datagram {
 struct RequestBatchHeader {
   // 0
-  uint8_t header[sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr) + sizeof(rte_udp_hdr)];
+  uint8_t header[sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr) +
+                 sizeof(rte_udp_hdr)];
   // 42
   uint8_t magic;  // 0x78 for requests; 0x79 for responses.
   uint8_t num_requests;
@@ -54,8 +55,8 @@ class RequestBatchReader {
   bool is_valid() const {
     auto mac = reinterpret_cast<const rte_ether_hdr*>(buf_->get_data());
     auto bh = reinterpret_cast<const RequestBatchHeader*>(buf_->get_data());
-    auto ip =
-        reinterpret_cast<const rte_ipv4_hdr*>(buf_->get_data() + sizeof(rte_ether_hdr));
+    auto ip = reinterpret_cast<const rte_ipv4_hdr*>(buf_->get_data() +
+                                                    sizeof(rte_ether_hdr));
     auto udp = reinterpret_cast<const rte_udp_hdr*>(
         buf_->get_data() + sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr));
 
@@ -116,14 +117,14 @@ class RequestBatchReader {
   }
 
   uint32_t get_src_ipv4_addr() const {
-    auto ip =
-        reinterpret_cast<const rte_ipv4_hdr*>(buf_->get_data() + sizeof(rte_ether_hdr));
+    auto ip = reinterpret_cast<const rte_ipv4_hdr*>(buf_->get_data() +
+                                                    sizeof(rte_ether_hdr));
     return ip->src_addr;
   }
 
   uint32_t get_dest_ipv4_addr() const {
-    auto ip =
-        reinterpret_cast<const rte_ipv4_hdr*>(buf_->get_data() + sizeof(rte_ether_hdr));
+    auto ip = reinterpret_cast<const rte_ipv4_hdr*>(buf_->get_data() +
+                                                    sizeof(rte_ether_hdr));
     return ip->dst_addr;
   }
 
@@ -211,9 +212,9 @@ class RequestBatchBuilder {
   typedef ::mica::processor::Operation Operation;
   typedef ::mica::table::Result Result;
 
-  static constexpr uint16_t kMaxValueLength = RTE_ETHER_MAX_LEN - RTE_ETHER_CRC_LEN -
-                                              sizeof(RequestBatchHeader) -
-                                              sizeof(RequestHeader);
+  static constexpr uint16_t kMaxValueLength =
+      RTE_ETHER_MAX_LEN - RTE_ETHER_CRC_LEN - sizeof(RequestBatchHeader) -
+      sizeof(RequestHeader);
 
   RequestBatchBuilder()
       : buf_(nullptr), h_(nullptr), remaining_space_(0), count_(0) {}
@@ -246,24 +247,26 @@ class RequestBatchBuilder {
   }
 
   void set_src_ipv4_addr(uint32_t v) {
-    auto ip = reinterpret_cast<rte_ipv4_hdr*>(buf_->get_data() + sizeof(rte_ether_hdr));
+    auto ip = reinterpret_cast<rte_ipv4_hdr*>(buf_->get_data() +
+                                              sizeof(rte_ether_hdr));
     ip->src_addr = v;
   }
 
   void set_dest_ipv4_addr(uint32_t v) {
-    auto ip = reinterpret_cast<rte_ipv4_hdr*>(buf_->get_data() + sizeof(rte_ether_hdr));
+    auto ip = reinterpret_cast<rte_ipv4_hdr*>(buf_->get_data() +
+                                              sizeof(rte_ether_hdr));
     ip->dst_addr = v;
   }
 
   void set_src_udp_port(uint16_t v) const {
-    auto udp = reinterpret_cast<rte_udp_hdr*>(buf_->get_data() + sizeof(rte_ether_hdr) +
-                                          sizeof(rte_ipv4_hdr));
+    auto udp = reinterpret_cast<rte_udp_hdr*>(
+        buf_->get_data() + sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr));
     udp->src_port = v;
   }
 
   void set_dest_udp_port(uint16_t v) const {
-    auto udp = reinterpret_cast<rte_udp_hdr*>(buf_->get_data() + sizeof(rte_ether_hdr) +
-                                          sizeof(rte_ipv4_hdr));
+    auto udp = reinterpret_cast<rte_udp_hdr*>(
+        buf_->get_data() + sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr));
     udp->dst_port = v;
   }
 
@@ -334,8 +337,8 @@ class RequestBatchBuilder {
     */
     assert(has_sufficient_space(key_length, value_length));
     assert(count_ != 0xff);
-    assert(key_length < (1 << 8));//256
-    assert(value_length < (1 << 24));//16777216
+    assert(key_length < (1 << 8));     //256
+    assert(value_length < (1 << 24));  //16777216
 
     h_->operation = static_cast<uint8_t>(operation);
     h_->result = static_cast<uint8_t>(result);
@@ -360,9 +363,10 @@ class RequestBatchBuilder {
   void finalize() {
     auto mac = reinterpret_cast<rte_ether_hdr*>(buf_->get_data());
     auto bh = reinterpret_cast<RequestBatchHeader*>(buf_->get_data());
-    auto ip = reinterpret_cast<rte_ipv4_hdr*>(buf_->get_data() + sizeof(rte_ether_hdr));
-    auto udp = reinterpret_cast<rte_udp_hdr*>(buf_->get_data() + sizeof(rte_ether_hdr) +
-                                          sizeof(rte_ipv4_hdr));
+    auto ip = reinterpret_cast<rte_ipv4_hdr*>(buf_->get_data() +
+                                              sizeof(rte_ether_hdr));
+    auto udp = reinterpret_cast<rte_udp_hdr*>(
+        buf_->get_data() + sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr));
 
     size_t packet_length =
         static_cast<size_t>(reinterpret_cast<char*>(h_) - buf_->get_data());
@@ -398,7 +402,7 @@ class RequestBatchBuilder {
   // more effective.
   uint16_t count_;
 };
-}
-}
+}  // namespace datagram
+}  // namespace mica
 
 #endif

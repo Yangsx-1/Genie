@@ -204,7 +204,7 @@ uint64_t Partitions<StaticConfig>::get_processing_time(
     uint16_t lcore_id) const {
   return load_stats_[lcore_id].processing_time;
 }
-}
-}
+}  // namespace processor
+}  // namespace mica
 
 #endif

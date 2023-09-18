@@ -86,7 +86,8 @@ void Partitions<StaticConfig>::initialize() {
     pool_config.insert_bool("concurrent_write", concurrent_write_);
     pool_config.insert_uint64("numa_node",
                               ::mica::util::lcore.numa_id(current_lcore_id));
-    uint64_t size_per_table_ = static_cast<uint64_t>(total_size_ / partition_count_);
+    uint64_t size_per_table_ =
+        static_cast<uint64_t>(total_size_ / partition_count_);
 
     auto table_config = ::mica::util::Config::empty_dict(
         std::string() + "[derived from " + config_.get_path() +
@@ -119,7 +120,7 @@ void Partitions<StaticConfig>::initialize() {
     }
   }
 }
-}
-}
+}  // namespace processor
+}  // namespace mica
 
 #endif

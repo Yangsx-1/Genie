@@ -2,7 +2,7 @@
 #ifndef MICA_PROCESSOR_PARTITIONS_IMPL_PROCESS_H_
 #define MICA_PROCESSOR_PARTITIONS_IMPL_PROCESS_H_
 
-#include<stdlib.h>
+#include <stdlib.h>
 
 namespace mica {
 namespace processor {
@@ -63,7 +63,6 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
     index -= stage_gap;
     //uint64_t time2 = ::mica::util::rdtsc();
     //sampling_times[lcore_id][static_cast<uint8_t>(ra.get_key(index)[7])] += diff_in_sec(time2 ,time1);
-
 
     if (StaticConfig::kVerbose)
       printf("lcore %2" PRIu16 ": [1] i_ %" PRIu64 ", index %" PRIu64
@@ -174,17 +173,20 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
             result = table->get(
                 key_hash, ra.get_key(index), ra.get_key_length(index),
                 out_value, out_value_length, &out_value_length, allow_mutation);
-            if (result == Result::kGetSuccess || result == Result::kPartialValue){
+            if (result == Result::kGetSuccess ||
+                result == Result::kPartialValue) {
               ra.set_out_value_length(index, out_value_length);
-            }
-            else{//kgetnotfound, reset_item
+            } else {  //kgetnotfound, reset_item
               uint8_t tenant_id = table->calc_tenant_id(ra.get_key(index));
-              size_t reload_value_length_ = std::max(8.0, avg_value_length[tenant_id]);
+              size_t reload_value_length_ =
+                  std::max(8.0, avg_value_length[tenant_id]);
               //size_t reload_value_length_ = 8;
               char reload_value_[reload_value_length_];
-              memset(reload_value_, 128, sizeof(char)*reload_value_length_);
-              result = table->reset_item(key_hash, ra.get_key(index),ra.get_key_length(index), reload_value_,
-                                reload_value_length_, true);//result=kReloadSuccess
+              memset(reload_value_, 128, sizeof(char) * reload_value_length_);
+              result = table->reset_item(key_hash, ra.get_key(index),
+                                         ra.get_key_length(index),
+                                         reload_value_, reload_value_length_,
+                                         true);  //result=kReloadSuccess
               ra.set_out_value_length(index, 0);
             }
           } break;
@@ -276,7 +278,7 @@ void Partitions<StaticConfig>::process(RequestAccessor& ra) {
   apply_pending_owner_lcore_changes();
 }
 
-}
-}
+}  // namespace processor
+}  // namespace mica
 
 #endif

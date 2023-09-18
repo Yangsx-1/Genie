@@ -51,7 +51,7 @@ class Stopwatch {
   struct timeval init_tv_;
   uint64_t init_t_;
 };
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

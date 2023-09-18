@@ -30,7 +30,7 @@ uint8_t LTable<StaticConfig>::calc_tag(uint64_t key_hash) {
 }
 
 template <class StaticConfig>
-uint8_t LTable<StaticConfig>::calc_tenant_id(const char* key){
+uint8_t LTable<StaticConfig>::calc_tenant_id(const char* key) {
   const uint64_t* key_ptr = reinterpret_cast<const uint64_t*>(key);
   return static_cast<uint8_t>((*key_ptr) >> 56);
 }
@@ -67,7 +67,7 @@ bool LTable<StaticConfig>::compare_keys(const char* key1, size_t key1_len,
          ::mica::util::memcmp_equal<8>(key1, key2,
                                        ::mica::util::roundup<8>(key1_len));
 }
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

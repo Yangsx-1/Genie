@@ -196,7 +196,9 @@ void DPDK<StaticConfig>::init_eal(uint64_t core_mask) {
   rte_argv_[rte_argc_++] = strdup("");
 
   char s_core_mask[1024];
-  snprintf(s_core_mask, sizeof(core_mask) + 1, "%" PRIx64 "", core_mask);//need change sizeof(core_mask) + n to match the core number
+  snprintf(
+      s_core_mask, sizeof(core_mask) + 1, "%" PRIx64 "",
+      core_mask);  //need change sizeof(core_mask) + n to match the core number
   rte_argv_[rte_argc_++] = strdup("-c");
   rte_argv_[rte_argc_++] = strdup(s_core_mask);
 
@@ -706,9 +708,9 @@ uint16_t DPDK<StaticConfig>::receive(EndpointId eid, PacketBuffer** bufs,
   //if(rx_packets != 0) printf("queue %hu received %hu packets\n",queue_id , rx_packets);//xhj
   ei.rx_bursts++;
   ei.rx_packets += rx_packets;
-  
+
   uint64_t packet_size = 0;
-  for(int i = 0; i < rx_packets; ++i){
+  for (int i = 0; i < rx_packets; ++i) {
     packet_size += bufs[i]->get_packet_length();
   }
   //printf("%d %d\n", bufs[0]->get_length(), count);
@@ -730,9 +732,9 @@ uint16_t DPDK<StaticConfig>::send(EndpointId eid, PacketBuffer** bufs,
   uint16_t tx_packets =
       rte_eth_tx_burst(static_cast<uint8_t>(port_id), queue_id,
                        reinterpret_cast<rte_mbuf**>(bufs), buf_count);
-    
+
   uint64_t packet_size = 0;
-  for(int i = 0; i < tx_packets; ++i){
+  for (int i = 0; i < tx_packets; ++i) {
     packet_size += bufs[i]->get_packet_length();
   }
   //printf("%d %d\n", bufs[0]->get_length(), count);

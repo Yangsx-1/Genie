@@ -10,6 +10,6 @@ template <typename T>
 struct is_trivially_copyable<std::pair<T, uint64_t>> {
   static constexpr bool value = is_trivially_copyable<T>::value;
 };
-}
+}  // namespace std
 
 #endif

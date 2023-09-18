@@ -151,7 +151,7 @@ void DirectoryClient::unregister_server() {
 
   registered_ = false;
 }
-}
-}
+}  // namespace directory
+}  // namespace mica
 
 #endif

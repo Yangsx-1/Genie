@@ -20,7 +20,7 @@ static uint64_t rdtscp() {
   asm volatile("rdtscp" : "=a"(rax), "=d"(rdx), "=c"(aux) : :);
   return (rdx << 32) | rax;
 }
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

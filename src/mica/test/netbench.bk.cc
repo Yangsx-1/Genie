@@ -45,7 +45,7 @@ struct Args {
   Alloc* alloc;
   Client* client;
   double zipf_theta;
-  double get_ratio;//xhj
+  double get_ratio;  //xhj
   int key_size;
   int value_size;
 } __attribute__((aligned(128)));
@@ -67,7 +67,7 @@ int worker_proc(void* arg) {
   size_t num_items = 192 * 1048576;
 
   // double get_ratio = 0.95;
-  double get_ratio = args->get_ratio;//xhj
+  double get_ratio = args->get_ratio;  //xhj
   // int key_size = args->key_size;
   // int value_size = args->value_size;
 
@@ -82,16 +82,16 @@ int worker_proc(void* arg) {
 
   uint64_t key_i;
   uint64_t key_hash;
-  size_t key_length = sizeof(key_i);//8 byte
-  size_t specified_key_length = static_cast<size_t>(args->key_size);//xhj
+  size_t key_length = sizeof(key_i);                                  //8 byte
+  size_t specified_key_length = static_cast<size_t>(args->key_size);  //xhj
   /*
   TODO: add key_padding to the append_request function
   */
   char* key = reinterpret_cast<char*>(&key_i);
 
   uint64_t value_i;
-  size_t value_length = sizeof(value_i);//8 byte
-  size_t specified_value_length = static_cast<size_t>(args->value_size);//xhj
+  size_t value_length = sizeof(value_i);  //8 byte
+  size_t specified_value_length = static_cast<size_t>(args->value_size);  //xhj
   char* value = reinterpret_cast<char*>(&value_i);
 
   bool use_noop = false;
@@ -107,7 +107,7 @@ int worker_proc(void* arg) {
  * @Author: Huijuan Xiao
  * @Description: TODO: test the filter
  */
-  
+
   while (true) {
     // Determine the operation type.
     uint32_t op_r = op_type_rand.next_u32();
@@ -139,12 +139,13 @@ int worker_proc(void* arg) {
     else {
       value_i = seq;
       //client.set(key_hash, key, key_length, value, value_length, true);
-      client.set(key_hash, key, specified_key_length, value, specified_value_length, true);
+      client.set(key_hash, key, specified_key_length, value,
+                 specified_value_length, true);
     }
 
     seq++;
   }
-  sleep(2);//xhj  second 
+  sleep(2);  //xhj  second
   return 0;
 }
 
@@ -162,7 +163,6 @@ int main(int argc, const char* argv[]) {
   double get_ratio = atof(argv[2]);
   int key_size = atoi(argv[3]);
   int value_size = atoi(argv[4]);
-
 
   ::mica::util::lcore.pin_thread(0);
 

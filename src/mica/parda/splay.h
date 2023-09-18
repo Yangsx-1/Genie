@@ -12,27 +12,26 @@ Modified a little by Qingpeng Niu for tracing the global chunck library memory u
 typedef struct tree_node Tree;
 typedef int32_t T;
 struct tree_node {
-    Tree * left, * right;
-    T key;
-    T size;   /* maintained to be the number of nodes rooted here */
+  Tree *left, *right;
+  T key;
+  T size; /* maintained to be the number of nodes rooted here */
 };
 
-#define compare(i,j) ((i)-(j))
+#define compare(i, j) ((i) - (j))
 /* This is the comparison.                                       */
 /* Returns <0 if i<j, =0 if i=j, and >0 if i>j                   */
- 
-#define node_size(x) (((x)==NULL) ? 0 : ((x)->size))
+
+#define node_size(x) (((x) == NULL) ? 0 : ((x)->size))
 /* This macro returns the size of a node.  Unlike "x->size",     */
 /* it works even if x=NULL.  The test could be avoided by using  */
 /* a special version of NULL which was a real node with size 0.  */
- 
-Tree * splay (T i, Tree *t);
-Tree * Tinsert(T i, Tree * t); 
-Tree * Tdelete(T i, Tree *t); 
-Tree *find_rank(T r, Tree *t); 
-void printtree(Tree * t, int d); 
-void freetree(Tree* t);
 
+Tree* splay(T i, Tree* t);
+Tree* Tinsert(T i, Tree* t);
+Tree* Tdelete(T i, Tree* t);
+Tree* find_rank(T r, Tree* t);
+void printtree(Tree* t, int d);
+void freetree(Tree* t);
 
 /*
            An implementation of top-down splaying with sizes
@@ -87,174 +86,171 @@ Modified a little by Qingpeng Niu for tracing the global chunck library memory u
        Addison-Wesley, 1993, pp 367-375
 */
 
-Tree * splay (T i, Tree *t)
+Tree* splay(T i, Tree* t)
 /* Splay using the key i (which may or may not be in the tree.) */
 /* The starting root is t, and the tree used is defined by rat  */
 /* size fields are maintained */
 {
-    Tree N, *l, *r, *y;
-    T comp,l_size, r_size;
-    if (t == NULL) return t;
-    N.left = N.right = NULL;
-    l = r = &N;
-    l_size = r_size = 0;
- 
-    for (;;) {
-        comp = compare(i, t->key);
-        if (comp < 0) {
-            if (t->left == NULL) break;
-            if (compare(i, t->left->key) < 0) {
-                y = t->left;                           /* rotate right */
-                t->left = y->right;
-                y->right = t;
-                t->size = node_size(t->left) + node_size(t->right) + 1;
-                t = y;
-                if (t->left == NULL) break;
-            }
-            r->left = t;                               /* link right */
-            r = t;
-            t = t->left;
-            r_size += 1+node_size(r->right);
-        } else if (comp > 0) {
-            if (t->right == NULL) break;
-            if (compare(i, t->right->key) > 0) {
-                y = t->right;                          /* rotate left */
-                t->right = y->left;
-                y->left = t;
-		t->size = node_size(t->left) + node_size(t->right) + 1;
-                t = y;
-                if (t->right == NULL) break;
-            }
-            l->right = t;                              /* link left */
-            l = t;
-            t = t->right;
-            l_size += 1+node_size(l->left);
-        } else {
-            break;
-        }
-    }
-    l_size += node_size(t->left);  /* Now l_size and r_size are the sizes of */
-    r_size += node_size(t->right); /* the left and right trees we just built.*/
-    t->size = l_size + r_size + 1;
+  Tree N, *l, *r, *y;
+  T comp, l_size, r_size;
+  if (t == NULL) return t;
+  N.left = N.right = NULL;
+  l = r = &N;
+  l_size = r_size = 0;
 
-    l->right = r->left = NULL;
-
-    /* The following two loops correct the size fields of the right path  */
-    /* from the left child of the root and the right path from the left   */
-    /* child of the root.                                                 */
-    for (y = N.right; y != NULL; y = y->right) {
-        y->size = l_size;
-        l_size -= 1+node_size(y->left);
-    }
-    for (y = N.left; y != NULL; y = y->left) {
-        y->size = r_size;
-        r_size -= 1+node_size(y->right);
-    }
- 
-    l->right = t->left;                                /* assemble */
-    r->left = t->right;
-    t->left = N.right;
-    t->right = N.left;
-
-    return t;
-}
-
-Tree * Tinsert(T i, Tree * t) {
-/* Insert key i into the tree t, if it is not already there. */
-/* Return a pointer to the resulting tree.                   */
-    Tree * new_tree;
-
-    if (t != NULL) {
-	t = splay(i,t);
-	if (compare(i, t->key)==0) {
-	    return t;  /* it's already there */
-	}
-    }
-    new_tree = (Tree *) malloc (sizeof (Tree));
-    if (new_tree == NULL) {printf("Ran out of space\n"); exit(1);}
-    if (t == NULL) {
-	new_tree->left = new_tree->right = NULL;
-    } else if (compare(i, t->key) < 0) {
-	new_tree->left = t->left;
-	new_tree->right = t;
-	t->left = NULL;
-	t->size = 1+node_size(t->right);
+  for (;;) {
+    comp = compare(i, t->key);
+    if (comp < 0) {
+      if (t->left == NULL) break;
+      if (compare(i, t->left->key) < 0) {
+        y = t->left; /* rotate right */
+        t->left = y->right;
+        y->right = t;
+        t->size = node_size(t->left) + node_size(t->right) + 1;
+        t = y;
+        if (t->left == NULL) break;
+      }
+      r->left = t; /* link right */
+      r = t;
+      t = t->left;
+      r_size += 1 + node_size(r->right);
+    } else if (comp > 0) {
+      if (t->right == NULL) break;
+      if (compare(i, t->right->key) > 0) {
+        y = t->right; /* rotate left */
+        t->right = y->left;
+        y->left = t;
+        t->size = node_size(t->left) + node_size(t->right) + 1;
+        t = y;
+        if (t->right == NULL) break;
+      }
+      l->right = t; /* link left */
+      l = t;
+      t = t->right;
+      l_size += 1 + node_size(l->left);
     } else {
-	new_tree->right = t->right;
-	new_tree->left = t;
-	t->right = NULL;
-	t->size = 1+node_size(t->left);
+      break;
     }
-    new_tree->key = i;
-    new_tree->size = 1 + node_size(new_tree->left) + node_size(new_tree->right);
-    return new_tree;
+  }
+  l_size += node_size(t->left);  /* Now l_size and r_size are the sizes of */
+  r_size += node_size(t->right); /* the left and right trees we just built.*/
+  t->size = l_size + r_size + 1;
+
+  l->right = r->left = NULL;
+
+  /* The following two loops correct the size fields of the right path  */
+  /* from the left child of the root and the right path from the left   */
+  /* child of the root.                                                 */
+  for (y = N.right; y != NULL; y = y->right) {
+    y->size = l_size;
+    l_size -= 1 + node_size(y->left);
+  }
+  for (y = N.left; y != NULL; y = y->left) {
+    y->size = r_size;
+    r_size -= 1 + node_size(y->right);
+  }
+
+  l->right = t->left; /* assemble */
+  r->left = t->right;
+  t->left = N.right;
+  t->right = N.left;
+
+  return t;
 }
 
-Tree * Tdelete(T i, Tree *t) {
-/* Deletes i from the tree if it's there.               */
-/* Return a pointer to the resulting tree.              */
-    Tree * x;
-    T tsize;
+Tree* Tinsert(T i, Tree* t) {
+  /* Insert key i into the tree t, if it is not already there. */
+  /* Return a pointer to the resulting tree.                   */
+  Tree* new_tree;
 
-    if (t==NULL) return NULL;
-    tsize = t->size;
-    t = splay(i,t);
-    if (compare(i, t->key) == 0) {               /* found it */
-	if (t->left == NULL) {
-	    x = t->right;
-	} else {
-	    x = splay(i, t->left);
-	    x->right = t->right;
-	}
-	free(t);
-	if (x != NULL) {
-	    x->size = tsize-1;
-	}
-	return x;
+  if (t != NULL) {
+    t = splay(i, t);
+    if (compare(i, t->key) == 0) {
+      return t; /* it's already there */
+    }
+  }
+  new_tree = (Tree*)malloc(sizeof(Tree));
+  if (new_tree == NULL) {
+    printf("Ran out of space\n");
+    exit(1);
+  }
+  if (t == NULL) {
+    new_tree->left = new_tree->right = NULL;
+  } else if (compare(i, t->key) < 0) {
+    new_tree->left = t->left;
+    new_tree->right = t;
+    t->left = NULL;
+    t->size = 1 + node_size(t->right);
+  } else {
+    new_tree->right = t->right;
+    new_tree->left = t;
+    t->right = NULL;
+    t->size = 1 + node_size(t->left);
+  }
+  new_tree->key = i;
+  new_tree->size = 1 + node_size(new_tree->left) + node_size(new_tree->right);
+  return new_tree;
+}
+
+Tree* Tdelete(T i, Tree* t) {
+  /* Deletes i from the tree if it's there.               */
+  /* Return a pointer to the resulting tree.              */
+  Tree* x;
+  T tsize;
+
+  if (t == NULL) return NULL;
+  tsize = t->size;
+  t = splay(i, t);
+  if (compare(i, t->key) == 0) { /* found it */
+    if (t->left == NULL) {
+      x = t->right;
     } else {
-	return t;                         /* It wasn't there */
+      x = splay(i, t->left);
+      x->right = t->right;
     }
-}
-
-Tree *find_rank(T r, Tree *t) {
-/* Returns a pointer to the node in the tree with the given rank.  */
-/* Returns NULL if there is no such node.                          */
-/* Does not change the tree.  To guarantee logarithmic behavior,   */
-/* the node found here should be splayed to the root.              */
-    T lsize;
-    if ((r < 0) || (r >= node_size(t))) return NULL;
-    for (;;) {
-	lsize = node_size(t->left);
-	if (r < lsize) {
-	    t = t->left;
-	} else if (r > lsize) {
-	    r = r - lsize -1;
-	    t = t->right;
-	} else {
-	    return t;
-	}
-    }
-}
-void freetree(Tree* t)
-{
-    if(t==NULL) return;
-    freetree(t->right);
-    freetree(t->left);
     free(t);
-}
-void printtree(Tree * t, int d) {
-    //printf("%p\n",t);
-    int i;
-    if (t == NULL) return;
-    printtree(t->right, d+1);
-    for (i=0; i<d; i++) printf("  ");
-    printf("%d(%d)\n", t->key, t->size);
-    printtree(t->left, d+1);
+    if (x != NULL) {
+      x->size = tsize - 1;
+    }
+    return x;
+  } else {
+    return t; /* It wasn't there */
+  }
 }
 
+Tree* find_rank(T r, Tree* t) {
+  /* Returns a pointer to the node in the tree with the given rank.  */
+  /* Returns NULL if there is no such node.                          */
+  /* Does not change the tree.  To guarantee logarithmic behavior,   */
+  /* the node found here should be splayed to the root.              */
+  T lsize;
+  if ((r < 0) || (r >= node_size(t))) return NULL;
+  for (;;) {
+    lsize = node_size(t->left);
+    if (r < lsize) {
+      t = t->left;
+    } else if (r > lsize) {
+      r = r - lsize - 1;
+      t = t->right;
+    } else {
+      return t;
+    }
+  }
+}
+void freetree(Tree* t) {
+  if (t == NULL) return;
+  freetree(t->right);
+  freetree(t->left);
+  free(t);
+}
+void printtree(Tree* t, int d) {
+  //printf("%p\n",t);
+  int i;
+  if (t == NULL) return;
+  printtree(t->right, d + 1);
+  for (i = 0; i < d; i++) printf("  ");
+  printf("%d(%d)\n", t->key, t->size);
+  printtree(t->left, d + 1);
+}
 
-
-
-
-#endif 
-
+#endif

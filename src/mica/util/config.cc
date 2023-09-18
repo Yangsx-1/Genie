@@ -359,7 +359,7 @@ Config& Config::insert_dict(std::string key, const Config& v) {
 Config::Config(const std::shared_ptr<rapidjson::Document>& root,
                rapidjson::Value* current, std::string path)
     : root_(root), current_(current), path_(path) {}
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

@@ -1,14 +1,13 @@
 {
-    "alloc": {
-      /*"clean_files_on_init": true,
+  "alloc": {
+    /*"clean_files_on_init": true,
       "verbose": true*/
-    },
-  
-    "table": {
-      "item_count": 1048576,
-      "concurrent_read": false,
-      "concurrent_write": false,
-      "numa_node": 0,
-      "tenant_count": 1
-    }
+  },
+  "table": {
+    "item_count": 1048576,
+    "concurrent_read": false,
+    "concurrent_write": false,
+    "numa_node": 0,
+    "tenant_count": 1
+  }
 }

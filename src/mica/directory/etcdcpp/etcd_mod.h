@@ -794,7 +794,7 @@ class Curl {
   void _SetPostOptions(const std::string& url, const std::string& type,
                        const CurlOptions& options);
 };
-}
+}  // namespace internal
 
 //------------------------------- LIFECYCLE ----------------------------------
 
@@ -829,7 +829,8 @@ Reply Client<Reply>::Set(const std::string& key, const std::string& value,
   try {
     ret = handle_->Set(url_prefix_ + key, kPutRequest,
                        {
-                           {kValue, value}, {kTttl, std::to_string(ttl)},
+                           {kValue, value},
+                           {kTttl, std::to_string(ttl)},
                        });
   } catch (const std::exception& e) {
     throw ClientException(e.what());
@@ -934,7 +935,8 @@ Reply Client<Reply>::AddDirectory(const std::string& dir, const TtlValue& ttl) {
   try {
     ret = handle_->Set(url_prefix_ + dir, kPutRequest,
                        {
-                           {kDir, "true"}, {kTttl, std::to_string(ttl)},
+                           {kDir, "true"},
+                           {kTttl, std::to_string(ttl)},
                        });
   } catch (const std::exception& e) {
     throw ClientException(e.what());
@@ -1064,8 +1066,7 @@ Reply Client<Reply>::_GetReply(const std::string& json) {
 
 template <typename Reply>
 Watch<Reply>::Watch(const std::string& server, const Port& port) try
-    : handle_(new internal::Curl()),
-      prev_index_(0) {
+    : handle_(new internal::Curl()), prev_index_(0) {
   std::ostringstream ostr;
   ostr << "http://" << server << ":" << port << "/v2/keys";
   url_prefix_ = ostr.str();

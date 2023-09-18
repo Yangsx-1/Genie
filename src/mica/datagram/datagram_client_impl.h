@@ -530,9 +530,8 @@ void DatagramClient<StaticConfig>::handle_response(ResponseHandler& rh) {
 
       for (uint16_t i = 0; i < count; i++) network_->release(bufs[i]);
 
-      if (lcore_id == 0 &&
-          ++thread_state.report_status_check >=
-              thread_state.report_status_check_max) {
+      if (lcore_id == 0 && ++thread_state.report_status_check >=
+                               thread_state.report_status_check_max) {
         thread_state.report_status_check = 0;
 
         double time_diff =
@@ -594,8 +593,8 @@ DatagramClient<StaticConfig>::set(uint64_t key_hash, const char* key,
                                   size_t key_length, const char* value,
                                   size_t value_length, bool overwrite,
                                   const Argument& arg) {
-  return append_request(Operation::kSet, key_hash,
-                        key, key_length, value, value_length, arg);
+  return append_request(Operation::kSet, key_hash, key, key_length, value,
+                        value_length, arg);
 }
 
 template <class StaticConfig>
@@ -1064,7 +1063,7 @@ void DatagramClient<StaticConfig>::report_status(double time_diff) {
   printf("\n");
   if (flush_status_report_) fflush(stdout);
 }
-}
-}
+}  // namespace datagram
+}  // namespace mica
 
 #endif

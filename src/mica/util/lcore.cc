@@ -61,7 +61,7 @@ void LCore::pin_thread(size_t lcore_id) const {
 }
 
 const LCore lcore;
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

@@ -54,7 +54,7 @@ Result LTable<StaticConfig>::del(uint64_t key_hash, const char* key,
   stat_inc(&Stats::delete_found);
   return Result::kSuccess;
 }
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

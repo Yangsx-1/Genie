@@ -36,7 +36,7 @@ class LCore {
 };
 
 extern const LCore lcore;
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

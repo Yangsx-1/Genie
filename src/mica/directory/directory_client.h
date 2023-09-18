@@ -53,7 +53,7 @@ class DirectoryClient {
   bool registered_;
   std::string info_;
 };
-}
-}
+}  // namespace directory
+}  // namespace mica
 
 #endif

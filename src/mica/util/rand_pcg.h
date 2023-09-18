@@ -30,7 +30,7 @@ class RandPCG {
   pcg32_oneseq state_;
   // pcg32_fast state_;
 };
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

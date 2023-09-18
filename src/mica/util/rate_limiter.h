@@ -168,7 +168,7 @@ class ExponentialRateLimiter : public RateLimiter {
   uint64_t last_time_;
   uint64_t cycles_for_next_token_;
 };
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

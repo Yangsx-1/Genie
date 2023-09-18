@@ -154,7 +154,7 @@ class Latency {
   // [3968, inf) us
   uint64_t bin5_;
 };
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

@@ -124,9 +124,8 @@ constexpr size_t SegregatedFit<StaticConfig>::size_to_class_roundup(
     uint64_t size) {
   assert(size <= kMaximumSize);
 
-  if (size <=
-      kMinimumSize +
-          (StaticConfig::kNumClasses - 1) * StaticConfig::kClassIncrement)
+  if (size <= kMinimumSize + (StaticConfig::kNumClasses - 1) *
+                                 StaticConfig::kClassIncrement)
     return (size - kMinimumSize + StaticConfig::kClassIncrement - 1) /
            StaticConfig::kClassIncrement;
   else
@@ -325,7 +324,7 @@ void SegregatedFit<StaticConfig>::coalese_free_chunk_right(
   assert(*chunk_start + *chunk_size < data_ + size_);
 
   if (get_tag_status(*reinterpret_cast<uint64_t*>(
-                         *chunk_start + *chunk_size)) == kStatusOccupied)
+          *chunk_start + *chunk_size)) == kStatusOccupied)
     return;
 
   char* adj_chunk_start = *chunk_start + *chunk_size;
@@ -433,7 +432,7 @@ constexpr uint64_t SegregatedFit<StaticConfig>::make_tag_vec(uint64_t size,
                                                              uint64_t status) {
   return size | (status << 63UL);
 }
-}
-}
+}  // namespace pool
+}  // namespace mica
 
 #endif

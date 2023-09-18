@@ -288,7 +288,7 @@ class Sqlite : public TableInterface {
   };
 } __attribute__((aligned(128)));  // To prevent false sharing caused by
                                   // adjacent cacheline prefetching.
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

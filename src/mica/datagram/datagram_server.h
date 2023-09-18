@@ -107,16 +107,26 @@ class DatagramServer {
 
     uint64_t last_operations_done;
     uint64_t last_operations_succeeded;
-    
+
     uint64_t total_key_length;
     uint64_t total_value_length;
 
     uint64_t last_key_length;
     uint64_t last_value_length;
-    TenantStats() : get_done(0), get_succeeded(0), operations_done(0), operations_succeeded(0),
-                    last_get_done(0), last_get_succeeded(0), last_operations_done(0), last_operations_succeeded(0),
-                    total_key_length(0), total_value_length(0), last_key_length(0), last_value_length(0) {};
-  };//__attribute__((aligned(128)));
+    TenantStats()
+        : get_done(0),
+          get_succeeded(0),
+          operations_done(0),
+          operations_succeeded(0),
+          last_get_done(0),
+          last_get_succeeded(0),
+          last_operations_done(0),
+          last_operations_succeeded(0),
+          total_key_length(0),
+          total_value_length(0),
+          last_key_length(0),
+          last_value_length(0){};
+  };  //__attribute__((aligned(128)));
 
   struct WorkerStats {
     uint64_t alive;
@@ -133,7 +143,7 @@ class DatagramServer {
     uint64_t last_get_succeeded;
 
     TenantStats* tenant_stats_;
-  };//__attribute__((aligned(256)));
+  };  //__attribute__((aligned(256)));
 
   struct EndpointStats {
     uint64_t last_rx_bursts;
@@ -145,7 +155,7 @@ class DatagramServer {
     uint64_t last_tx_packet_size;
   };
 
-  struct tenant_info{
+  struct tenant_info {
     double get_ratio;
     double key_size;
     double value_size;
@@ -282,8 +292,8 @@ class DatagramServer {
 
   std::vector<EndpointStats> endpoint_stats_;
 };
-}
-}
+}  // namespace datagram
+}  // namespace mica
 
 #include "mica/datagram/datagram_server_impl.h"
 

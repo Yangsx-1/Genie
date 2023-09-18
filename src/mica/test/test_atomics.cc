@@ -375,7 +375,7 @@ int worker_proc(void* arg) {
             v_local = actual_v;
           }
           if ((i & 0xff) == 0)
-            new_v = sw.now(); // Emulates occasional clock sync.
+            new_v = sw.now();  // Emulates occasional clock sync.
           else
             new_v += 1000UL;
         }

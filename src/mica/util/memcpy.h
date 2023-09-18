@@ -16,9 +16,13 @@ static void memcpy(void* dest, const void* src, size_t n) {
   ::mica::util::rte_memcpy_func(dest, src, n);
 }
 
-static void memmove(void* dest, const void* src, size_t n) { ::memmove(dest, src, n); }
+static void memmove(void* dest, const void* src, size_t n) {
+  ::memmove(dest, src, n);
+}
 
-static int memcmp(const void* a, const void* b, size_t n) { return ::memcmp(a, b, n); }
+static int memcmp(const void* a, const void* b, size_t n) {
+  return ::memcmp(a, b, n);
+}
 
 static bool memcmp_equal(const void* a, const void* b, size_t n) {
   return ::memcmp(a, b, n) == 0;
@@ -154,7 +158,7 @@ bool memcmp_equal(const T1* a, const T2* b, size_t n) {
   } else
     return ::mica::util::memcmp_equal(a, b, n);
 }
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

@@ -24,7 +24,7 @@ static To safe_cast(From x) noexcept {
   }
   // return static_cast<To>(x);
 }
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

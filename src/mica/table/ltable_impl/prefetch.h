@@ -39,12 +39,12 @@ void LTable<StaticConfig>::prefetch_pool(uint64_t key_hash) const {
     */
     uint64_t item_offset = get_item_offset(item_vec);
     Pool* pool_ = pools_[get_item_tenant_id(item_vec)];
-    if(item_offset < pool_->get_size()){
+    if (item_offset < pool_->get_size()) {
       pool_->prefetch_item(item_offset);
     }
   }
 }
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

@@ -171,13 +171,13 @@ class Partitions : public ProcessorInterface<typename StaticConfig::Table> {
 
   struct RecentKeyHashes {
     uint8_t v[StaticConfig::kRecentKeyHashBuckets *
-               StaticConfig::kRecentKeyHashAssociativity];
+              StaticConfig::kRecentKeyHashAssociativity];
   } __attribute__((aligned(128)));  // To prevent false sharing caused by
                                     // adjacent cacheline prefetching.
   RecentKeyHashes recent_key_hashes_[StaticConfig::kMaxLCoreCount];
 };
-}
-}
+}  // namespace processor
+}  // namespace mica
 
 #include "mica/processor/partitions_impl/info.h"
 #include "mica/processor/partitions_impl/init.h"

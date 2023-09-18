@@ -87,7 +87,8 @@ class LTable : public TableInterface {
   //The maximum number of tenants to support.
   //static constexpr size_t kMaxTenantCount = BasicLTableConfig::kMaxTenantCount;
   // ltable_impl/init.h
-  LTable(const ::mica::util::Config& config, Alloc* alloc, uint64_t table_pool_size);
+  LTable(const ::mica::util::Config& config, Alloc* alloc,
+         uint64_t table_pool_size);
   ~LTable();
   BasicLossyLTableConfig::Pool* get_pool(size_t tenant_id);
   void reset();
@@ -103,7 +104,7 @@ class LTable : public TableInterface {
   Result set(uint64_t key_hash, const char* key, size_t key_length,
              const char* value, size_t value_length, bool overwrite);
   Result reset_item(uint64_t key_hash, const char* key, size_t key_length,
-             const char* value, size_t value_length, bool overwrite);
+                    const char* value, size_t value_length, bool overwrite);
 
   // ltable_impl/test.h
   Result test(uint64_t key_hash, const char* key, size_t key_length) const;
@@ -131,7 +132,7 @@ class LTable : public TableInterface {
   typedef LTablePoolSpecialization<typename Pool::Tag> Specialization;
 
   size_t basic_struct_size = 24;
-  
+
   struct Item {
     uint32_t kv_length_vec;  // key_length: 8, value_length: 24; kv_length_vec
                              // == 0: empty item
@@ -155,11 +156,11 @@ class LTable : public TableInterface {
     /**
      * @description: tag 8bits, tenant_id 8bits, wrap_number 16bits, offset 32bits
      * @author: yangsx
-     */    
+     */
 
     static constexpr uint64_t kTagMask = (uint64_t(1) << 8) - 1;
     //static constexpr uint64_t kWrapAroundMask = ((uint64_t(1) << 48) - 1) &(~((uint64_t(1) << 40) - 1));
-    
+
     static constexpr uint64_t kItemOffsetMask = (uint64_t(1) << 32) - 1;
     /*
      *@Author: Huijuan Xiao
@@ -201,7 +202,8 @@ class LTable : public TableInterface {
   static uint16_t get_item_wrap_around_number(uint64_t item_vec);
   static uint8_t get_item_tenant_id(uint64_t item_vec);
   //static uint64_t make_item_vec(uint16_t tag, uint64_t item_offset);
-  static uint64_t make_item_vec(uint8_t tag, uint8_t tenant_id, uint16_t wrap_number, uint64_t item_offset);
+  static uint64_t make_item_vec(uint8_t tag, uint8_t tenant_id,
+                                uint16_t wrap_number, uint64_t item_offset);
   uint32_t calc_bucket_index(uint64_t key_hash) const;
   static bool has_extra_bucket(const Bucket* bucket);
   const Bucket* get_extra_bucket(uint32_t extra_bucket_index) const;
@@ -222,8 +224,8 @@ class LTable : public TableInterface {
   size_t find_same_tag(Bucket* bucket, uint8_t tag, Bucket** located_bucket);
   void cleanup_bucket(uint64_t old_tail, uint64_t new_tail);
   void cleanup_all();
-  bool isValid(uint16_t log_wrap_number, uint16_t item_wrap_number, 
-              uint64_t log_offset, uint64_t item_offset, uint64_t size_);
+  bool isValid(uint16_t log_wrap_number, uint16_t item_wrap_number,
+               uint64_t log_offset, uint64_t item_offset, uint64_t size_);
 
   // ltable_impl/info.h
   void print_bucket(const Bucket* bucket) const;
@@ -236,7 +238,7 @@ class LTable : public TableInterface {
   static uint32_t make_kv_length_vec(uint32_t key_length,
                                      uint32_t value_length);
   static uint8_t calc_tag(uint64_t key_hash);
-  
+
   static void set_item(Item* item, uint64_t key_hash, const char* key,
                        uint32_t key_length, const char* value,
                        uint32_t value_length);
@@ -248,7 +250,8 @@ class LTable : public TableInterface {
   // ltable_impl/move_to_head.h
   void move_to_head(Bucket* bucket, Bucket* located_bucket, const Item* item,
                     size_t key_length, size_t value_length, size_t item_index,
-                    uint64_t item_vec, uint16_t item_wrap_number, uint64_t item_offset, uint64_t key_hash);
+                    uint64_t item_vec, uint16_t item_wrap_number,
+                    uint64_t item_offset, uint64_t key_hash);
 
   // ltable_impl/lock.h
   void lock_bucket(Bucket* bucket);
@@ -272,7 +275,7 @@ class LTable : public TableInterface {
   uint8_t rshift_;
 
   uint32_t num_buckets_;
-  uint32_t num_buckets_mask_; 
+  uint32_t num_buckets_mask_;
   uint32_t num_extra_buckets_;
   uint64_t pool_size_;
   //uint64_t mth_threshold_;
@@ -283,10 +286,10 @@ class LTable : public TableInterface {
   ExtraBucketFreeList extra_bucket_free_list_;
 
   mutable Stats stats_;
-}; //__attribute__((aligned(128)));  // To prevent false sharing caused by
-                                  // adjacent cacheline prefetching.
-}
-}
+};  //__attribute__((aligned(128)));  // To prevent false sharing caused by
+    // adjacent cacheline prefetching.
+}  // namespace table
+}  // namespace mica
 
 #include "mica/table/ltable_impl/bucket.h"
 #include "mica/table/ltable_impl/del.h"

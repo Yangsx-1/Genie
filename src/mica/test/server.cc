@@ -21,7 +21,7 @@ struct DatagramServerConfig
 typedef ::mica::datagram::DatagramServer<DatagramServerConfig> Server;
 
 int main(int argc, const char* argv[]) {
-  if(argc != 5){
+  if (argc != 5) {
     printf("%s WRONG PARAMETERS\n", argv[0]);
     return EXIT_FAILURE;
   }
@@ -32,7 +32,7 @@ int main(int argc, const char* argv[]) {
   //::mica::processor::input_tenant_count = atoi(argv[3]);
   ::mica::parda::sample_rate_index = 6;
   ::mica::datagram::cpu_sample_index = 1;
-  
+
   ::mica::util::lcore.pin_thread(0);
 
   //auto config = ::mica::util::Config::load_file("server.json");

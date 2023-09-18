@@ -88,8 +88,7 @@ void LTable<StaticConfig>::set_tenant_theta(uint8_t tenant_id, double theta){
   tenants_stats_[tenant_id].theta = theta;
 }*/
 
-
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

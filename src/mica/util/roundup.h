@@ -36,7 +36,7 @@ static constexpr T next_power_of_two(T x) {
 }
 
 #pragma GCC diagnostic pop
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

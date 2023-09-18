@@ -92,7 +92,7 @@ uint32_t LTable<StaticConfig>::read_version_end(const Bucket* bucket) const {
     return 0U;
   }
 }
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

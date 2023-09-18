@@ -39,7 +39,7 @@ class ZipfGen {
   Rand rand_;
 } __attribute__((aligned(128)));  // To prevent false sharing caused by
                                   // adjacent cacheline prefetching.
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

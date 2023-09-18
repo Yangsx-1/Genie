@@ -21,16 +21,17 @@ uint16_t LTable<StaticConfig>::get_item_wrap_around_number(uint64_t item_vec) {
 }
 
 template <class StaticConfig>
-uint8_t LTable<StaticConfig>::get_item_tenant_id(uint64_t item_vec){
+uint8_t LTable<StaticConfig>::get_item_tenant_id(uint64_t item_vec) {
   return static_cast<uint8_t>(item_vec >> 48);
 }
 
 template <class StaticConfig>
 uint64_t LTable<StaticConfig>::make_item_vec(uint8_t tag, uint8_t tenant_id,
-                                             uint16_t wrap_number, uint64_t item_offset) {
+                                             uint16_t wrap_number,
+                                             uint64_t item_offset) {
   uint64_t item_vector = (static_cast<uint64_t>(tag) << 56) | item_offset;
-  item_vector |=  (static_cast<uint64_t>(tenant_id) << 48);
-  item_vector |=  (static_cast<uint64_t>(wrap_number) << 32);
+  item_vector |= (static_cast<uint64_t>(tenant_id) << 48);
+  item_vector |= (static_cast<uint64_t>(wrap_number) << 32);
   return item_vector;
   //return ((static_cast<uint64_t>(tag) << 48) | item_offset);
 }
@@ -231,8 +232,9 @@ size_t LTable<StaticConfig>::get_empty_or_oldest(Bucket* bucket,
       uint64_t pool_tail = Specialization::get_tail(pool_);
       uint64_t item_offset = get_item_offset(item_vec);
       uint64_t pool_size = Specialization::get_size(pool_);
-      uint64_t distance = 
-        (item_offset < pool_tail) ? (pool_tail - item_offset) : (pool_size - item_offset + pool_tail);
+      uint64_t distance = (item_offset < pool_tail)
+                              ? (pool_tail - item_offset)
+                              : (pool_size - item_offset + pool_tail);
 
       if (oldest_item_distance > distance) {
         oldest_item_distance = distance;
@@ -266,7 +268,7 @@ size_t LTable<StaticConfig>::find_item_index(
       Add is_valid() for item or offset availability.
       */
       Pool* pool_ = pools_[get_item_tenant_id(item_vec)];
-      if (!Specialization::is_valid(pool_, item_wrap_number, item_offset)) 
+      if (!Specialization::is_valid(pool_, item_wrap_number, item_offset))
         continue;
 
       // we may read garbage values, which do not cause any fatal issue
@@ -295,7 +297,7 @@ size_t LTable<StaticConfig>::find_item_index(
       // we skip any validity check because it will be done by callers who are
       // doing
       // more jobs with this result
-      
+
       if (StaticConfig::kVerbose) printf("find item index: %zu\n", item_index);
       *located_bucket = current_bucket;
       return item_index;
@@ -353,7 +355,7 @@ size_t LTable<StaticConfig>::find_same_tag(Bucket* bucket, uint8_t tag,
 
 template <class StaticConfig>
 void LTable<StaticConfig>::cleanup_bucket(uint64_t old_tail,
-                                          uint64_t new_tail) {//hello xhj 
+                                          uint64_t new_tail) {  //hello xhj
   if (!std::is_base_of<::mica::pool::CircularLogTag,
                        typename Pool::Tag>::value) {
     assert(false);
@@ -393,7 +395,7 @@ void LTable<StaticConfig>::cleanup_bucket(uint64_t old_tail,
          * @Description:  update the function call to be the same as the parameter type of other function calls
          */
         Pool* pool_ = pools_[get_item_tenant_id(*item_vec_p)];
-        if(!Specialization::is_valid(pool_, item_wrap_number, item_offset)){
+        if (!Specialization::is_valid(pool_, item_wrap_number, item_offset)) {
           *item_vec_p = 0;
           stat_inc(&Stats::cleanup);
           stat_dec(&Stats::count);
@@ -411,27 +413,29 @@ void LTable<StaticConfig>::cleanup_bucket(uint64_t old_tail,
 }
 
 template <class StaticConfig>
-bool LTable<StaticConfig>::isValid(uint16_t log_wrap_number, uint16_t item_wrap_number, uint64_t tail_, uint64_t offset, uint64_t size_){
+bool LTable<StaticConfig>::isValid(uint16_t log_wrap_number,
+                                   uint16_t item_wrap_number, uint64_t tail_,
+                                   uint64_t offset, uint64_t size_) {
   uint64_t kWrapAroundSize = 2097152;
-  if(log_wrap_number == item_wrap_number){
+  if (log_wrap_number == item_wrap_number) {
     return true;
-  }
-  else if(log_wrap_number == static_cast<uint16_t>(static_cast<uint16_t>(1) + item_wrap_number)){
+  } else if (log_wrap_number == static_cast<uint16_t>(static_cast<uint16_t>(1) +
+                                                      item_wrap_number)) {
     return ((offset > tail_) && (offset < (size_ - kWrapAroundSize)));
-  }
-  else{
+  } else {
     return false;
   }
 }
 
 template <class StaticConfig>
-void LTable<StaticConfig>::cleanup_specified_bucket(uint32_t begin_index, uint32_t clean_number){
+void LTable<StaticConfig>::cleanup_specified_bucket(uint32_t begin_index,
+                                                    uint32_t clean_number) {
   uint32_t bucket_index = begin_index;
   uint32_t cleaned_bucket_number = 0;
   uint64_t tails[kTenantCount] = {0};
   uint16_t wrap_numbers[kTenantCount] = {0};
   uint64_t sizes[kTenantCount] = {0};
-  for(size_t i = 0; i < kTenantCount; i++){
+  for (size_t i = 0; i < kTenantCount; i++) {
     Pool* tmp_pool = pools_[i];
     tails[i] = tmp_pool->get_tail();
     wrap_numbers[i] = tmp_pool->get_wrap_around_number();
@@ -443,8 +447,7 @@ void LTable<StaticConfig>::cleanup_specified_bucket(uint32_t begin_index, uint32
     lock_bucket(bucket);
     Bucket* current_bucket = bucket;
     size_t item_index;
-    for (item_index = 0; item_index < StaticConfig::kBucketSize;
-          item_index++) {
+    for (item_index = 0; item_index < StaticConfig::kBucketSize; item_index++) {
       uint64_t* item_vec_p = &current_bucket->item_vec[item_index];
       if (*item_vec_p == 0) continue;
 
@@ -455,7 +458,8 @@ void LTable<StaticConfig>::cleanup_specified_bucket(uint32_t begin_index, uint32
       //tails[tenant_id] = tmp_pool->get_tail();
       //wrap_numbers[tenant_id] = tmp_pool->get_wrap_around_number();
       //sizes[tenant_id] = tmp_pool->get_size();
-      if(!isValid(wrap_numbers[tenant_id], item_wrap_number, tails[tenant_id], item_offset, sizes[tenant_id])){
+      if (!isValid(wrap_numbers[tenant_id], item_wrap_number, tails[tenant_id],
+                   item_offset, sizes[tenant_id])) {
         *item_vec_p = 0;
         stat_inc(&Stats::cleanup);
         stat_dec(&Stats::count);
@@ -478,11 +482,11 @@ void LTable<StaticConfig>::cleanup_all() {
 }
 
 template <class StaticConfig>
-uint32_t LTable<StaticConfig>::get_bucket_mask(){
+uint32_t LTable<StaticConfig>::get_bucket_mask() {
   return num_buckets_mask_;
 }
 
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

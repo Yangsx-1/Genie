@@ -34,7 +34,7 @@ class EtcdReply {
 };
 
 typedef ::etcd::Client<EtcdReply> EtcdClient;
-}
-}
+}  // namespace directory
+}  // namespace mica
 
 #endif

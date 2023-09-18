@@ -4,19 +4,18 @@
     "etcd_port": 50505
     /*"verbose": true*/
   },
-
   "alloc": {
     /*"num_pages_to_free": [1024, 1024]*/
     /*"num_pages_to_free": [1024]*/
-    "num_pages_to_free": [2048]
+    "num_pages_to_free": [
+      2048
+    ]
     /*"verbose": true*/
   },
-  "processor": {
-  },
+  "processor": {},
   "table": {
     "path": ":memory:"
   },
-
   "network": {
     /*"lcores": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27],*/
     /*"lcores": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],*/
@@ -24,10 +23,14 @@
     /*"lcores": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],*/
     /*"lcores": [0, 2],*/
     /*"lcores": [0, 1],*/
-    "lcores": [0],
-
+    "lcores": [
+      0
+    ],
     "ports": [
-      {"port_id": 0, "ipv4_addr": "10.0.0.1"}
+      {
+        "port_id": 0,
+        "ipv4_addr": "10.0.0.1"
+      }
       /*{"port_id": 1, "ipv4_addr": "10.0.0.2"},
       {"port_id": 2, "ipv4_addr": "10.0.0.3"},
       {"port_id": 3, "ipv4_addr": "10.0.0.4"},
@@ -36,13 +39,14 @@
       {"port_id": 6, "ipv4_addr": "10.0.0.7"},
       {"port_id": 7, "ipv4_addr": "10.0.0.8"}*/
     ],
-
     "endpoints": [
       /*[0, 0],
       [1, 0]*/
-      [0, 0]
+      [
+        0,
+        0
+      ]
     ],
-
     /*
     "endpoints": [
       [0, 0],
@@ -71,11 +75,13 @@
       [23, 7]
     ]
     */
-
     /*"dpdk_args": ["-n", "4", "--socket-mem=2048,2048"]*/
-    "dpdk_args": ["-n", "4", "--socket-mem=2048"]
+    "dpdk_args": [
+      "-n",
+      "4",
+      "--socket-mem=2048"
+    ]
   },
-
   "server": {
     "rebalance_interval": 0
   }

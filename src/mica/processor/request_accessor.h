@@ -137,7 +137,7 @@ class RequestArrayAccessor : public RandomAccessRequestAccessorInterface {
   char** out_values_;
   size_t** out_value_lengths_;
 };
-}
-}
+}  // namespace processor
+}  // namespace mica
 
 #endif

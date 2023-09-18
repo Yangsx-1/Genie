@@ -65,13 +65,14 @@ class HugeTLBFS_SHM {
 
   void* malloc_striped(size_t size);
   void free_striped(void* ptr);
- /*
+  /*
  * @Author: Huijuan Xiao
  * @Description:  TODO:add api to adjust the memory of the specific entry
  */
   void* memory_adjustment(size_t entry_id, size_t expected_size, void* ptr);
   void* page_adjustment(size_t entry_id, size_t expect_size, void* ptr);
   bool check_enough_free_page(size_t entry_id, size_t expect_pages);
+
  private:
   void initialize();
 
@@ -101,7 +102,7 @@ class HugeTLBFS_SHM {
     bool to_remove;   // remove entry when refcount == 0
     size_t length;    //size of log
     size_t num_pages;
-   /*
+    /*
    * @Author: Huijuan Xiao
    * @Description: add a new variable ‘num_pages_occupied’ to flag the real number of pages it occupies
    */
@@ -135,7 +136,7 @@ class HugeTLBFS_SHM {
   std::vector<Mapping> mappings_;
   size_t used_memory_;
 };
-}
-}
+}  // namespace alloc
+}  // namespace mica
 
 #endif

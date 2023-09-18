@@ -2,23 +2,23 @@
 #define _PARDA_H
 
 #include "splay.h"
-#include<cstdint>
-#include<cstring>
+#include <cstdint>
+#include <cstring>
 
 #define DEFAULT_NBUCKETS 100000000
-#define B_OVFL   nbuckets
-#define B_INF    nbuckets+1
+#define B_OVFL nbuckets
+#define B_INF nbuckets + 1
 #define SLEN 20
 
-namespace mica{
-namespace parda{
+namespace mica {
+namespace parda {
 
 const size_t item_number = 4;
-class STable{
+class STable {
  public:
   STable();
 
-  struct hash_item{
+  struct hash_item {
     uint64_t keyhash;
     uint32_t last_time;
     uint32_t total_access_time;
@@ -33,7 +33,8 @@ class STable{
   size_t get_empty_or_oldest(const Bucket* curr_bucket);
   size_t find_same_keyhash(uint64_t keyhash, const Bucket* curr_bucket);
   void erase_item(uint64_t keyhash, size_t bucket_index);
-  void add_item(uint64_t keyhash, uint64_t curr_time, Bucket* curr_bucket, size_t item_index);
+  void add_item(uint64_t keyhash, uint64_t curr_time, Bucket* curr_bucket,
+                size_t item_index);
   //void cleanup_bucket(Bucket* bucket);
   void cleanup_all();
   void cleanup_access();
@@ -53,7 +54,7 @@ typedef struct parda_data_t {
   Tree* root;
   uint32_t* histogram;
   uint64_t n;
-  
+
   parda_data_t() {
     table = new STable;
     root = NULL;
@@ -62,7 +63,7 @@ typedef struct parda_data_t {
     n = 0;
   }
 
-  ~parda_data_t(){
+  ~parda_data_t() {
     delete table;
     delete[] histogram;
     freetree(root);
@@ -75,7 +76,7 @@ void pardaStatistics(uint64_t keyhash, parda_data_t* pdt);
 double theta_calculation(STable* table);
 void clean_up_parda(parda_data_t* pdt);
 
-}
-}
+}  // namespace parda
+}  // namespace mica
 
 #endif

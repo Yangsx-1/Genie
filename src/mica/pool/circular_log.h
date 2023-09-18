@@ -44,23 +44,24 @@ class CircularLog : public PoolInterface {
 
   typedef typename StaticConfig::Alloc Alloc;
 
-  CircularLog(const ::mica::util::Config& config, Alloc* alloc, uint8_t tenant_id);
+  CircularLog(const ::mica::util::Config& config, Alloc* alloc,
+              uint8_t tenant_id);
   ~CircularLog();
 
   typedef uint64_t Offset;
   typedef uint16_t WrapAround;
-  static constexpr size_t kOffsetWidth = 32;//xhj
+  static constexpr size_t kOffsetWidth = 32;  //xhj
   static constexpr Offset kInsufficientSpace =
       std::numeric_limits<Offset>::max();
-  static constexpr WrapAround kMaxWrapAroundNumber = 
+  static constexpr WrapAround kMaxWrapAroundNumber =
       std::numeric_limits<WrapAround>::max();
- /*
+  /*
  * @Author: Huijuan Xiao
  * @Description:  TODO:add api to calculate the memory size of the log and to modify the corresponding variables.
  */
 
-  uint64_t eaet();//calculate the mrc
-  void log_resizing();//update parameters  
+  uint64_t eaet();      //calculate the mrc
+  void log_resizing();  //update parameters
   uint64_t compute_new_log_size(double diff_time);
   uint64_t memory_estimation(size_t local_id, uint64_t item_size);
   uint64_t fine_grained_adjustment(double diff_time);
@@ -110,22 +111,21 @@ class CircularLog : public PoolInterface {
   uint32_t get_poolstruct_item_size();
 
   ::mica::parda::parda_data_t* parda;
-  volatile int parda_calculation;//0不需要计算//1需要计算//2计算完毕
-  bool sample_flag;//是否需要sample
+  volatile int parda_calculation;  //0不需要计算//1需要计算//2计算完毕
+  bool sample_flag;                //是否需要sample
 
  private:
-
   //void check_invariants() const;
 
   void pop_head();
   uint64_t push_tail(uint64_t item_size);
 
-  static constexpr size_t kMinimumSize = 2 * 1048576;//2MB
-  static constexpr size_t kAdjustMinimumSize = 16 * 1048576;//16MB
-  static constexpr size_t kWrapAroundSize = 2 * 1048576;//2MB 
+  static constexpr size_t kMinimumSize = 2 * 1048576;         //2MB
+  static constexpr size_t kAdjustMinimumSize = 16 * 1048576;  //16MB
+  static constexpr size_t kWrapAroundSize = 2 * 1048576;      //2MB
   static constexpr size_t kOffsetMask = (size_t(1) << kOffsetWidth) - 1;
-  double mth_thres = 0.5;// threshold for appro-lru
-  double ma_thres = 0.5;// threshold for log size adjustment
+  double mth_thres = 0.5;  // threshold for appro-lru
+  double ma_thres = 0.5;   // threshold for log size adjustment
 
   struct Item {
     uint64_t size;
@@ -146,7 +146,7 @@ class CircularLog : public PoolInterface {
 
   uint8_t lock_;
   /**/
-  volatile uint16_t wrap_around_number_;//8 bit for wrap around number
+  volatile uint16_t wrap_around_number_;  //8 bit for wrap around number
   /*
   uint8_t memory_adjustment_flag_;//8 bit for flag the memory adjustment
   uint8_t log_size_calculation_flag_;//8 bit for flag the log size calculation
@@ -154,18 +154,18 @@ class CircularLog : public PoolInterface {
 
   uint64_t size_;  // a power of two
   //uint64_t init_size;
-  static const uint64_t max_virtual_space_size = uint64_t(1) << 32;//4G
+  static const uint64_t max_virtual_space_size = uint64_t(1) << 32;  //4G
   uint64_t new_log_size_;
   uint64_t mth_thres_;
   uint64_t ma_thres_;
   size_t entry_id_;
 
-  double wait_interval;//调整等待时间
-  double next_adjust_time;//下次调整时间
-  uint64_t last_log_size;//上次计算所得size
-  uint64_t firsttime, secondtime;//时间控制
+  double wait_interval;            //调整等待时间
+  double next_adjust_time;         //下次调整时间
+  uint64_t last_log_size;          //上次计算所得size
+  uint64_t firsttime, secondtime;  //时间控制
   ::mica::util::Stopwatch timewatcher;
-  double log_adjust_interval;//log调整间隔
+  double log_adjust_interval;  //log调整间隔
   double next_shrink_time = 0;
 
   // internally, pool uses full 64-bit numbers for head and tail
@@ -174,13 +174,13 @@ class CircularLog : public PoolInterface {
   // we resolve this inconsistency by applying MEHCACHED_ITEM_OFFSET_MASK mask
   // whenever returning the offset to the outside or using a masked offset
   // given from the outside
-  uint64_t head_;                 // start offset of items
-  volatile uint64_t tail_;                 // end offset of items
+  uint64_t head_;           // start offset of items
+  volatile uint64_t tail_;  // end offset of items
   uint64_t tail_for_cleanup;
-}; // __attribute__((aligned(128)));  // To prevent false sharing caused by
-                                  // adjacent cacheline prefetching.
-}
-}
+};  // __attribute__((aligned(128)));  // To prevent false sharing caused by
+    // adjacent cacheline prefetching.
+}  // namespace pool
+}  // namespace mica
 
 #include "mica/pool/circular_log_impl.h"
 

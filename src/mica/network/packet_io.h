@@ -57,7 +57,7 @@ class PacketIOInterface {
   uint16_t receive(EndpointId eid, PacketBuffer** bufs, uint16_t buf_count);
   uint16_t send(EndpointId eid, PacketBuffer** bufs, uint16_t buf_count);
 };
-}
-}
+}  // namespace network
+}  // namespace mica
 
 #endif

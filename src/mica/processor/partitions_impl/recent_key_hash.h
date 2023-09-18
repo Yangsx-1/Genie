@@ -53,7 +53,7 @@ void Partitions<StaticConfig>::update_recent_key_hash(uint16_t lcore_id,
   // Put the new entry.
   recent_key_hashes_[lcore_id].v[index] = tag;
 }
-}
-}
+}  // namespace processor
+}  // namespace mica
 
 #endif

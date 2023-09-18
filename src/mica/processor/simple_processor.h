@@ -126,13 +126,13 @@ class SimpleProcessor
   void apply_pending_owner_lcore_changes() {}
   void wait_for_pending_owner_lcore_changes() {}
 
-  void rebalance_load(){}
+  void rebalance_load() {}
 
  private:
   ::mica::util::Config config_;
   Table* table_;
 };
-}
-}
+}  // namespace processor
+}  // namespace mica
 
 #endif

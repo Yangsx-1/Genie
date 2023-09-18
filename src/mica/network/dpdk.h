@@ -176,8 +176,8 @@ class DPDK : public PacketIOInterface {
 
   bool started_;
 };
-}
-}
+}  // namespace network
+}  // namespace mica
 
 #include "mica/network/dpdk_impl.h"
 

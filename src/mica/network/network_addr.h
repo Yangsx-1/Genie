@@ -43,7 +43,7 @@ class NetworkAddress {
     return std::string(buf);
   }
 };
-}
-}
+}  // namespace network
+}  // namespace mica
 
 #endif

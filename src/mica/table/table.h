@@ -9,7 +9,6 @@ namespace mica {
 namespace table {
 class TableInterface {
  public:
-
   Result del(uint64_t key_hash, const char* key, size_t key_length);
 
   Result get(uint64_t key_hash, const char* key, size_t key_length,
@@ -28,7 +27,7 @@ class TableInterface {
   void print_stats() const;
   void reset_stats(bool reset_count);
 };
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

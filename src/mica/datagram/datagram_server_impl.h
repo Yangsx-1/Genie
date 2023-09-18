@@ -4,12 +4,12 @@
 
 #include "sys/time.h"
 #include "mica/datagram/mlp.h"
-#include<cmath>
-#include<string>
+#include <cmath>
+#include <string>
 
-#define BLUE         "\033[0;32;34m"
-#define RED          "\033[0;32;31m"
-#define NONE         "\033[m"
+#define BLUE "\033[0;32;34m"
+#define RED "\033[0;32;31m"
+#define NONE "\033[m"
 
 namespace mica {
 namespace datagram {
@@ -176,7 +176,7 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
   ::mica::util::lcore.pin_thread(lcore_id);
 
   printf("worker running on lcore %" PRIu16 "\n", lcore_id);
-  
+
   // Find endpoints owned by this lcore.
   std::vector<EndpointId> my_eids;
   {
@@ -220,8 +220,8 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
     uint64_t now = stopwatch_.now();
 
     if (count > 0) {
-      if (StaticConfig::filterVerbose){ 
-      //if (::mica::util::lcore.lcore_id()!=0){//xhj
+      if (StaticConfig::filterVerbose) {
+        //if (::mica::util::lcore.lcore_id()!=0){//xhj
         printf("lcore %2zu: received %" PRIu16 " packets\n",
                ::mica::util::lcore.lcore_id(), count);
         /*
@@ -235,8 +235,11 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
         // auto ip = reinterpret_cast<const rte_ipv4_hdr*>(bufs[0]->get_data() + sizeof(rte_ether_hdr));
         // printf("src_ip= %u; dst_ip = %u\n", ip->src_addr,ip->dst_addr);
 
-        auto udp = reinterpret_cast<const rte_udp_hdr*>(bufs[0]->get_data() + sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr));
-        printf("src_port = %u; dst_port = %u\n", rte_be_to_cpu_16(udp->src_port), rte_be_to_cpu_16(udp->dst_port));
+        auto udp = reinterpret_cast<const rte_udp_hdr*>(
+            bufs[0]->get_data() + sizeof(rte_ether_hdr) + sizeof(rte_ipv4_hdr));
+        printf("src_port = %u; dst_port = %u\n",
+               rte_be_to_cpu_16(udp->src_port),
+               rte_be_to_cpu_16(udp->dst_port));
         printf("]\n");
       }
       // Process requests and possibly send responses.
@@ -248,21 +251,22 @@ void DatagramServer<StaticConfig>::worker_proc(uint16_t lcore_id) {
     check_pending_tx_timeout(rx_tx_state, now);
 
     // See if we need to report the status.
-    if (lcore_id == 0) { //&& ++report_status_check >= report_status_check_max) {
+    if (lcore_id ==
+        0) {  //&& ++report_status_check >= report_status_check_max) {
       report_status_check = 0;
 
       double time_diff = stopwatch_.diff(now, last_status_report);
       double last_comp_diff = stopwatch_.diff(now, last_comp_time);
       if (last_comp_diff >= cpu_sample_interval) {
-
         double running_time = stopwatch_.diff(now, core0_start_time);
-        
-        if(running_time > 600){
+
+        if (running_time > 600) {
           printf("Running over!\n");
           exit(0);
-        } 
-        if(time_diff > 1.) {
-          printf("Now running time is %.4lf sec / %.4lf min\n", running_time, running_time / 60.0);
+        }
+        if (time_diff > 1.) {
+          printf("Now running time is %.4lf sec / %.4lf min\n", running_time,
+                 running_time / 60.0);
           last_status_report = now;
           report_status(time_diff);
         }
@@ -288,34 +292,45 @@ int DatagramServer<StaticConfig>::clean_up_worker_proc_wrapper(void* arg) {
 }
 
 template <class StaticConfig>
-void DatagramServer<StaticConfig>::check_memory_resizing(){
+void DatagramServer<StaticConfig>::check_memory_resizing() {
   size_t partition_count = processor_->get_table_count();
   size_t tenant_count = kTenantCount;
-  for(uint16_t partition_number = 0; partition_number < partition_count; partition_number++){
-    ::mica::processor::BasicPartitionsConfig::Table* tmp_table = processor_->get_table(partition_number);
-    for(size_t tenant_id = 0; tenant_id < tenant_count; tenant_id++){
-      ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(tenant_id);
-      if(tmp_pool->parda_calculation == 1){//需要计算
-        uint64_t item_size =  round(processor_->avg_value_length[tenant_id]) + 
-                              round(processor_->avg_key_length[tenant_id]) + 24;//basic_struct_size = 24
-        tmp_pool->set_new_log_size(tmp_pool->memory_estimation(partition_number, item_size));
-        tmp_pool->parda_calculation = 2;//计算完毕
-        printf(BLUE"clean up worker help lcore%d tenant%d compute size!\n"NONE, partition_number, tenant_id);
+  for (uint16_t partition_number = 0; partition_number < partition_count;
+       partition_number++) {
+    ::mica::processor::BasicPartitionsConfig::Table* tmp_table =
+        processor_->get_table(partition_number);
+    for (size_t tenant_id = 0; tenant_id < tenant_count; tenant_id++) {
+      ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool =
+          tmp_table->get_pool(tenant_id);
+      if (tmp_pool->parda_calculation == 1) {  //需要计算
+        uint64_t item_size = round(processor_->avg_value_length[tenant_id]) +
+                             round(processor_->avg_key_length[tenant_id]) +
+                             24;  //basic_struct_size = 24
+        tmp_pool->set_new_log_size(
+            tmp_pool->memory_estimation(partition_number, item_size));
+        tmp_pool->parda_calculation = 2;  //计算完毕
+        printf(BLUE
+               "clean up worker help lcore%d tenant%d compute size!\n" NONE,
+               partition_number, tenant_id);
       }
     }
   }
 }
 
 template <class StaticConfig>
-void DatagramServer<StaticConfig>::theta_calculation(){
+void DatagramServer<StaticConfig>::theta_calculation() {
   size_t partition_count = processor_->get_table_count();
   size_t tenant_count = kTenantCount;
   std::fill(tenants_theta.begin(), tenants_theta.end(), 0);
-  std::fill(tenants_theta_calculate_number.begin(), tenants_theta_calculate_number.end(), 0);
-  for(uint16_t partition_number = 0; partition_number < partition_count; partition_number++){
-    ::mica::processor::BasicPartitionsConfig::Table* tmp_table = processor_->get_table(partition_number);
-    for(size_t tenant_id = 0; tenant_id < tenant_count; tenant_id++){
-      ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(tenant_id);
+  std::fill(tenants_theta_calculate_number.begin(),
+            tenants_theta_calculate_number.end(), 0);
+  for (uint16_t partition_number = 0; partition_number < partition_count;
+       partition_number++) {
+    ::mica::processor::BasicPartitionsConfig::Table* tmp_table =
+        processor_->get_table(partition_number);
+    for (size_t tenant_id = 0; tenant_id < tenant_count; tenant_id++) {
+      ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool =
+          tmp_table->get_pool(tenant_id);
       double theta = tmp_pool->theta_calculation();
       tenants_theta[tenant_id] += theta;
       tenants_theta_calculate_number[tenant_id]++;
@@ -324,9 +339,9 @@ void DatagramServer<StaticConfig>::theta_calculation(){
 }
 
 template <class StaticConfig>
-void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id){
+void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id) {
   ::mica::util::lcore.pin_thread(lcore_id);
-  printf(BLUE"clean up worker running on lcore %" PRIu16 "\n"NONE, lcore_id);
+  printf(BLUE "clean up worker running on lcore %" PRIu16 "\n" NONE, lcore_id);
   size_t partition_count = processor_->get_table_count();
   size_t partition_id = 0;
   size_t partition_mask = partition_count - 1;
@@ -339,23 +354,24 @@ void DatagramServer<StaticConfig>::clean_up_worker(uint16_t lcore_id){
   const uint32_t clean_number = 32768 * 8;
 
   uint64_t time_count = 0;
-  
-  while(true){
+
+  while (true) {
     sleep(1);
     time_count++;
-    if(time_count % 60 == 0) theta_calculation();
+    if (time_count % 60 == 0) theta_calculation();
     //if(!(time_count & parda_calculation_mask)) check_memory_resizing();
     check_memory_resizing();
     //printf(BLUE"cleaning partition %d index %d\n"NONE, partition_id, bucket_index);
-    processor_->get_table(partition_id)->cleanup_specified_bucket(bucket_index, clean_number);
+    processor_->get_table(partition_id)
+        ->cleanup_specified_bucket(bucket_index, clean_number);
     bucket_index += clean_number;
-    if(bucket_index >= bucket_number){//清完一个table
+    if (bucket_index >= bucket_number) {  //清完一个table
       bucket_index = 0;
       partition_id = (partition_id + 1) & partition_mask;
     }
   }
-  
-  printf(RED"clean up worker now do nothing!\n"NONE);
+
+  printf(RED "clean up worker now do nothing!\n" NONE);
   return;
 }
 
@@ -415,7 +431,7 @@ void DatagramServer<StaticConfig>::reset_status() {
   tenants_info_.resize(kTenantCount);
   tenants_theta.resize(kTenantCount);
   tenants_theta_calculate_number.resize(kTenantCount);
-  for(size_t i = 0; i < worker_stats_.size(); ++i){
+  for (size_t i = 0; i < worker_stats_.size(); ++i) {
     worker_stats_[i].tenant_stats_ = new TenantStats[kTenantCount];
   }
 
@@ -537,18 +553,22 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
       static_cast<double>(total_operations_succeeded) /
       static_cast<double>(std::max(total_operations_done, uint64_t(1)));
 
-  double hit_rate =
-      static_cast<double>(total_get_succeeded) /
-      static_cast<double>(std::max(total_get_done, uint64_t(1)));
+  double hit_rate = static_cast<double>(total_get_succeeded) /
+                    static_cast<double>(std::max(total_get_done, uint64_t(1)));
 
   size_t partition_count = processor_->get_table_count();
   uint64_t total_size = 0;
-  for(uint16_t partition_number = 0; partition_number < partition_count; partition_number++){
-    ::mica::processor::BasicPartitionsConfig::Table* tmp_table = processor_->get_table(partition_number);
-    ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool = tmp_table->get_pool(0);
+  for (uint16_t partition_number = 0; partition_number < partition_count;
+       partition_number++) {
+    ::mica::processor::BasicPartitionsConfig::Table* tmp_table =
+        processor_->get_table(partition_number);
+    ::mica::processor::BasicPartitionsConfig::Table::Pool* tmp_pool =
+        tmp_table->get_pool(0);
     total_size += tmp_pool->get_size();
   }
-  printf("size %lu B %lf MB %lf GB\n", total_size, 1.0 * total_size / (1024UL * 1024UL), 1.0 * total_size / (1024UL * 1024UL * 1024UL));
+  printf("size %lu B %lf MB %lf GB\n", total_size,
+         1.0 * total_size / (1024UL * 1024UL),
+         1.0 * total_size / (1024UL * 1024UL * 1024UL));
 
   printf("tput=%7.3lf Mops",
          static_cast<double>(total_operations_done) / time_diff / 1000000.);
@@ -564,10 +584,10 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
              static_cast<double>(std::max(tx_bursts, uint64_t(1))));
   printf(", TX_drop=%7.3lf Mpps",
          static_cast<double>(tx_dropped) / time_diff / 1000000.);
-  printf(", RX_speed=%7.3lf Gbps", 
-         static_cast<double>(rx_packet_size) * 8 / 1024 / 1024 / 1024  / time_diff);
-  printf(", TX_speed=%7.3lf Gbps",
-         static_cast<double>(tx_packet_size) * 8 / 1024 / 1024 / 1024  / time_diff);
+  printf(", RX_speed=%7.3lf Gbps", static_cast<double>(rx_packet_size) * 8 /
+                                       1024 / 1024 / 1024 / time_diff);
+  printf(", TX_speed=%7.3lf Gbps", static_cast<double>(tx_packet_size) * 8 /
+                                       1024 / 1024 / 1024 / time_diff);
   printf(", threads=%2" PRIu64 "/%2zu", total_alive,
          ::mica::util::lcore.lcore_count());
 
@@ -576,11 +596,11 @@ void DatagramServer<StaticConfig>::report_status(double time_diff) {
 }
 
 template <class StaticConfig>
-void DatagramServer<StaticConfig>::report_tenant_status(double time_diff, double running_time) {
+void DatagramServer<StaticConfig>::report_tenant_status(double time_diff,
+                                                        double running_time) {
   size_t tenantCount = kTenantCount;
 
-  for(size_t tenant_id = 0; tenant_id < tenantCount; tenant_id++){
-    
+  for (size_t tenant_id = 0; tenant_id < tenantCount; tenant_id++) {
     uint64_t total_get_operations_done = 0;
     uint64_t total_get_operations_succeeded = 0;
     uint64_t total_operations_done = 0;
@@ -588,40 +608,55 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff, double
     time_diff = std::max(0.01, time_diff);
     uint64_t total_key_length = 0;
     uint64_t total_value_length = 0;
-    for (size_t lcore_id = 0; lcore_id < ::mica::util::lcore.lcore_count(); lcore_id++) {
+    for (size_t lcore_id = 0; lcore_id < ::mica::util::lcore.lcore_count();
+         lcore_id++) {
       {
         uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].get_done;
-        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_get_done;
+        uint64_t& last_v =
+            worker_stats_[lcore_id].tenant_stats_[tenant_id].last_get_done;
         total_get_operations_done += v - last_v;
         last_v = v;
       }
       {
-        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].get_succeeded;
-        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_get_succeeded;
+        uint64_t v =
+            worker_stats_[lcore_id].tenant_stats_[tenant_id].get_succeeded;
+        uint64_t& last_v =
+            worker_stats_[lcore_id].tenant_stats_[tenant_id].last_get_succeeded;
         total_get_operations_succeeded += v - last_v;
         last_v = v;
       }
       {
-        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].operations_done;
-        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_operations_done;
+        uint64_t v =
+            worker_stats_[lcore_id].tenant_stats_[tenant_id].operations_done;
+        uint64_t& last_v = worker_stats_[lcore_id]
+                               .tenant_stats_[tenant_id]
+                               .last_operations_done;
         total_operations_done += v - last_v;
         last_v = v;
       }
       {
-        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].operations_succeeded;
-        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_operations_succeeded;
+        uint64_t v = worker_stats_[lcore_id]
+                         .tenant_stats_[tenant_id]
+                         .operations_succeeded;
+        uint64_t& last_v = worker_stats_[lcore_id]
+                               .tenant_stats_[tenant_id]
+                               .last_operations_succeeded;
         total_operations_succeeded += v - last_v;
         last_v = v;
       }
       {
-        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].total_key_length;
-        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_key_length;
+        uint64_t v =
+            worker_stats_[lcore_id].tenant_stats_[tenant_id].total_key_length;
+        uint64_t& last_v =
+            worker_stats_[lcore_id].tenant_stats_[tenant_id].last_key_length;
         total_key_length += v - last_v;
         last_v = v;
       }
       {
-        uint64_t v = worker_stats_[lcore_id].tenant_stats_[tenant_id].total_value_length;
-        uint64_t& last_v = worker_stats_[lcore_id].tenant_stats_[tenant_id].last_value_length;
+        uint64_t v =
+            worker_stats_[lcore_id].tenant_stats_[tenant_id].total_value_length;
+        uint64_t& last_v =
+            worker_stats_[lcore_id].tenant_stats_[tenant_id].last_value_length;
         total_value_length += v - last_v;
         last_v = v;
       }
@@ -635,27 +670,35 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff, double
         static_cast<double>(total_operations_succeeded) /
         static_cast<double>(std::max(total_operations_done, uint64_t(1)));
 
-    double get_ratio = static_cast<double>(total_get_operations_done) / 
+    double get_ratio =
+        static_cast<double>(total_get_operations_done) /
         static_cast<double>(std::max(total_operations_done, uint64_t(1)));
 
-    double avg_key_length = static_cast<double>(total_key_length) /
+    double avg_key_length =
+        static_cast<double>(total_key_length) /
         static_cast<double>(std::max(total_operations_done, uint64_t(1)));
 
-    double avg_value_length = static_cast<double>(total_value_length) /
-        static_cast<double>(std::max(total_operations_done - total_get_operations_done, uint64_t(1)));
+    double avg_value_length =
+        static_cast<double>(total_value_length) /
+        static_cast<double>(std::max(
+            total_operations_done - total_get_operations_done, uint64_t(1)));
     this->processor_->avg_value_length[tenant_id] = avg_value_length;
     this->processor_->avg_key_length[tenant_id] = avg_key_length;
 
-    double tput = static_cast<double>(total_operations_done) / time_diff / 1000000.;
+    double tput =
+        static_cast<double>(total_operations_done) / time_diff / 1000000.;
 
-    double theta = tenants_theta[tenant_id] / 
-        static_cast<double>(std::max(tenants_theta_calculate_number[tenant_id], uint64_t(1)));
-    
-    double infos[5] = {theta, get_ratio, avg_key_length, avg_value_length, tput};
+    double theta = tenants_theta[tenant_id] /
+                   static_cast<double>(std::max(
+                       tenants_theta_calculate_number[tenant_id], uint64_t(1)));
+
+    double infos[5] = {theta, get_ratio, avg_key_length, avg_value_length,
+                       tput};
     double cpu_usage = 0;
     MultilayerPerceptron(infos, 5, &cpu_usage);
 
-    ::mica::pool::hit_rate_diff[tenant_id] = hit_rate - ::mica::pool::last_hit_rate[tenant_id];
+    ::mica::pool::hit_rate_diff[tenant_id] =
+        hit_rate - ::mica::pool::last_hit_rate[tenant_id];
     ::mica::pool::last_hit_rate[tenant_id] = hit_rate;
 
     tenants_info_[tenant_id].get_ratio = get_ratio;
@@ -666,23 +709,21 @@ void DatagramServer<StaticConfig>::report_tenant_status(double time_diff, double
     ::mica::pool::last_tenants_theta[tenant_id] = theta;
     tenants_info_[tenant_id].cpu_usage = cpu_usage;
 
-    if(time_diff > 1.){
-    printf("tenant_id=%lu", tenant_id);
-    printf(", tput=%7.3lf Mops", tput);
-    printf(", success_rate=%6.2lf%%", success_rate * 100.);
-    printf(", hit_rate=%6.2lf%%", hit_rate * 100.);
-    printf(", get_ratio=%6.2lf%%", get_ratio * 100.);
-    printf(", key_length=%6.2lf", avg_key_length);
-    printf(", value_length=%6.2lf", avg_value_length);
-    printf(", theta=%6.2lf", theta);
-    printf(", cpu_usage=%6.2lf", cpu_usage);
-    printf("\n");
+    if (time_diff > 1.) {
+      printf("tenant_id=%lu", tenant_id);
+      printf(", tput=%7.3lf Mops", tput);
+      printf(", success_rate=%6.2lf%%", success_rate * 100.);
+      printf(", hit_rate=%6.2lf%%", hit_rate * 100.);
+      printf(", get_ratio=%6.2lf%%", get_ratio * 100.);
+      printf(", key_length=%6.2lf", avg_key_length);
+      printf(", value_length=%6.2lf", avg_value_length);
+      printf(", theta=%6.2lf", theta);
+      printf(", cpu_usage=%6.2lf", cpu_usage);
+      printf("\n");
     }
-    
   }
 
   if (flush_status_report_) fflush(stdout);
-
 }
 
 template <class StaticConfig>
@@ -852,15 +893,16 @@ void DatagramServer<StaticConfig>::RequestAccessor::retire(size_t index) {
   // Update stats.
   worker_stats_->num_operations_done++;
   worker_stats_->tenant_stats_[tenant_id].operations_done++;
-  worker_stats_->tenant_stats_[tenant_id].total_key_length += this->get_key_length(index);
-  
+  worker_stats_->tenant_stats_[tenant_id].total_key_length +=
+      this->get_key_length(index);
+
   Result tmp_result = pending_response_batch_.result;
-  if (tmp_result == Result::kSuccess){//set success
+  if (tmp_result == Result::kSuccess) {  //set success
     worker_stats_->num_operations_succeeded++;
     worker_stats_->tenant_stats_[tenant_id].operations_succeeded++;
-    worker_stats_->tenant_stats_[tenant_id].total_value_length += this->get_value_length(index);
-  }
-  else if(tmp_result == Result::kGetSuccess){//get success
+    worker_stats_->tenant_stats_[tenant_id].total_value_length +=
+        this->get_value_length(index);
+  } else if (tmp_result == Result::kGetSuccess) {  //get success
     worker_stats_->num_operations_succeeded++;
     worker_stats_->num_get_done++;
     worker_stats_->num_get_succeeded++;
@@ -868,7 +910,7 @@ void DatagramServer<StaticConfig>::RequestAccessor::retire(size_t index) {
     worker_stats_->tenant_stats_[tenant_id].operations_succeeded++;
     worker_stats_->tenant_stats_[tenant_id].get_done++;
     worker_stats_->tenant_stats_[tenant_id].get_succeeded++;
-  }else{//get fail
+  } else {  //get fail
     worker_stats_->num_get_done++;
     worker_stats_->tenant_stats_[tenant_id].get_done++;
   }
@@ -991,7 +1033,7 @@ void DatagramServer<StaticConfig>::RequestAccessor::
 
   server_->check_pending_tx_full(*rx_tx_state_);
 }
-}
-}
+}  // namespace datagram
+}  // namespace mica
 
 #endif

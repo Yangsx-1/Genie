@@ -36,7 +36,7 @@ struct BasicDatagramClientConfig {
   static constexpr size_t kMaxLCoreCount = 64;
 
   // The maximum size of a request batch.
-  static constexpr uint16_t kMaxRequestBatchSize = 1;//xhj
+  static constexpr uint16_t kMaxRequestBatchSize = 1;  //xhj
 
   // The request batching timeout (accumulation time) in microseconds.
   // static constexpr uint16_t kRequestBatchTimeout = 1;
@@ -370,8 +370,8 @@ class DatagramClient {
   void reset_status();
   void report_status(double time_diff);
 } __attribute__((aligned(128)));
-}
-}
+}  // namespace datagram
+}  // namespace mica
 
 #include "mica/datagram/datagram_client_impl.h"
 

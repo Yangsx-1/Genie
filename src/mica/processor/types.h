@@ -13,6 +13,6 @@ enum class Operation {
   kDelete,
 };
 }
-}
+}  // namespace mica
 
 #endif

@@ -192,7 +192,7 @@ void ZipfGen::test(double theta) {
     printf("\n");
   }
 }
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif

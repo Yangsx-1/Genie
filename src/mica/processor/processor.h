@@ -23,6 +23,6 @@ class ProcessorInterface {
   bool get_concurrent_read() const;
   bool get_concurrent_write() const;
 };
-}
-}
+}  // namespace processor
+}  // namespace mica
 #endif

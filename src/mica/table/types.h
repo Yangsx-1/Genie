@@ -24,6 +24,6 @@ enum class Result {
   kGetNotFound,
 };
 }
-}
+}  // namespace mica
 
 #endif

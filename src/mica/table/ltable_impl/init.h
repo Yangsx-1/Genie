@@ -24,10 +24,9 @@ LTable<StaticConfig>::LTable(const ::mica::util::Config& config, Alloc* alloc,
   pools_ = new Pool*[kTenantCount];
   pool_size_ = table_pool_size / kTenantCount;
 
-  for(uint8_t i = 0; i < kTenantCount; i++){
+  for (uint8_t i = 0; i < kTenantCount; i++) {
     auto log_config = ::mica::util::Config::empty_dict(
-        std::string() + "[derived from " + config_.get_path() +
-        " by Tables]");
+        std::string() + "[derived from " + config_.get_path() + " by Tables]");
 
     //uint64_t size_per_tenant_ = static_cast<uint64_t>(total_size_ / partition_count_ /(StaticConfig::kTenantCount));
     log_config.insert_uint64("size", pool_size_);
@@ -35,10 +34,10 @@ LTable<StaticConfig>::LTable(const ::mica::util::Config& config, Alloc* alloc,
     log_config.insert_bool("concurrent_read", concurrent_read);
     log_config.insert_bool("concurrent_write", concurrent_write);
     log_config.insert_uint64("numa_node", numa_node);
-    log_config.insert_uint64("partition_number", config.get("partition_number").get_uint64());
+    log_config.insert_uint64("partition_number",
+                             config.get("partition_number").get_uint64());
     pools_[i] = new Pool(log_config, alloc_, i);
   }
-
 
   size_t item_count = config.get("item_count").get_uint64();
   // Compensate the load factor.
@@ -80,7 +79,7 @@ LTable<StaticConfig>::LTable(const ::mica::util::Config& config, Alloc* alloc,
     while (true) {
       buckets_ = reinterpret_cast<Bucket*>(alloc_->find_free_address(shm_size));
       if (buckets_ == nullptr) assert(false);
-     /*
+      /*
       * @Author: Huijuan Xiao
       * @Description: Allocate memory to buckets and map the hugepages.
       */
@@ -105,7 +104,7 @@ LTable<StaticConfig>::LTable(const ::mica::util::Config& config, Alloc* alloc,
     concurrent_access_mode_ = 2;
 
   //mth_threshold_ = static_cast<uint64_t>(
-      //static_cast<double>(Specialization::get_size(pools_[0])) * mth_threshold);//need to modify by ysx
+  //static_cast<double>(Specialization::get_size(pools_[0])) * mth_threshold);//need to modify by ysx
 
   rshift_ = 0;
   while ((((Bucket::kItemOffsetMask + 1) >> 1) >> rshift_) > num_buckets_)
@@ -154,14 +153,14 @@ LTable<StaticConfig>::~LTable() {
 }
 
 template <class StaticConfig>
-BasicLossyLTableConfig::Pool* LTable<StaticConfig>::get_pool(size_t tenant_id){
+BasicLossyLTableConfig::Pool* LTable<StaticConfig>::get_pool(size_t tenant_id) {
   return pools_[tenant_id];
 }
 
 template <class StaticConfig>
 void LTable<StaticConfig>::reset() {
   size_t bucket_index;
-  
+
   //pool_->lock();
 
   for (bucket_index = 0; bucket_index < num_buckets_; bucket_index++) {
@@ -169,7 +168,7 @@ void LTable<StaticConfig>::reset() {
     size_t item_index;
     for (item_index = 0; item_index < StaticConfig::kBucketSize; item_index++) {
       uint64_t item_vec = bucket->item_vec[item_index];
-      if (item_vec != 0){
+      if (item_vec != 0) {
         uint8_t tenant_id = get_item_tenant_id(item_vec);
         pools_[tenant_id]->lock();
         pools_[tenant_id]->release(get_item_offset(item_vec));
@@ -199,7 +198,7 @@ void LTable<StaticConfig>::reset() {
   }
 
   //pool_->lock();
-  for(uint8_t i =0; i < kTenantCount; i++){
+  for (uint8_t i = 0; i < kTenantCount; i++) {
     //printf("No.%ld reset!\n", i);
     pools_[i]->lock();
     pools_[i]->reset();
@@ -210,7 +209,7 @@ void LTable<StaticConfig>::reset() {
 
   reset_stats(true);
 }
-}
-}
+}  // namespace table
+}  // namespace mica
 
 #endif

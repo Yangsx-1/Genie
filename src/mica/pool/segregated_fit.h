@@ -120,8 +120,8 @@ class SegregatedFit : public PoolInterface {
   uint64_t size_;                               // the total size
 } __attribute__((aligned(128)));  // To prevent false sharing caused by
                                   // adjacent cacheline prefetching.
-}
-}
+}  // namespace pool
+}  // namespace mica
 
 #include "mica/pool/segregated_fit_impl.h"
 

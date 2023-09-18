@@ -89,7 +89,7 @@ class Config {
   rapidjson::Value* current_;
   std::string path_;
 };
-}
-}
+}  // namespace util
+}  // namespace mica
 
 #endif
