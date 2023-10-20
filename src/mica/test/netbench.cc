@@ -122,9 +122,6 @@ int worker_proc(void* arg) {
   char* value = new char[value_length];
   memset(value, 128, sizeof(char)*value_length);
 
-  bool use_noop = false;
-  // bool use_noop = true;
-
   uint64_t last_handle_response_time = sw.now();
   // Check the response after sending some requests.
   // Ideally, packets per batch for both RX and TX should be similar.
@@ -138,55 +135,8 @@ int worker_proc(void* arg) {
   bool item_size_change = false;
   bool get_change = false;
   bool theta_change = false;
-  // uint64_t total_measure_time = 0;
-  // uint64_t total_measure_count = 0;
-  // uint64_t last_total_time = 0;
-  // std::ifstream infile;
-  // infile.open("/home/ysx/mica-with-multi-tenancy/cache-trace/cluster45.txt", std::ios::in);
-  // std::string input_line;
 
   while (true) {
-    //if(args->lcore_id > 0) continue;
-    // double runningtime = sw.diff(sw.now(), start_time);
-    // if(op_count > max_op_count) {
-    //   op_count = 0;
-    //   //printf("%lu\n", (uint64_t)((ceil(runningtime) - runningtime) * 1000));
-    //   usleep((uint64_t)((ceil(runningtime) - runningtime) * 1000 * 1000));
-    // }
-      
-    // if(runningtime < 60){
-    //   if(args->lcore_id >= 1) continue;
-    // }
-    // if(!zg_range_change && runningtime >= 900){
-    //   num_items = 256 * 1048576UL;
-    //   zg.change_n(num_items);
-    //   zg_range_change = true;
-    //   printf("change item range!\n");
-    // }
-    // if(!item_size_change && runningtime >= 1200){
-    //   item_size_change = true;
-    //   key_length = 8;
-    //   delete[] key;
-    //   key = new char[key_length];
-    //   memset(key, 128, sizeof(char)*key_length);
-    //   value_length = 8;
-    //   delete[] value;
-    //   value = new char[value_length];
-    //   memset(value, 128, sizeof(char)*value_length);
-    //   num_items = 2 * 128 * 1048576UL;
-    //   zg.change_n(num_items);
-    // }
-    // if(!get_change && runningtime >= 150){
-    //   get_change = true;
-    //   get_ratio = 0.5;
-    //   get_threshold = (uint32_t)(get_ratio * (double)((uint32_t)-1));
-    // }
-    // if(!theta_change && runningtime >= 600){
-    //   theta_change = true;
-    //   args->zipf_theta = 0;
-    //   //::mica::util::ZipfGen zg_(num_items, 0, args->lcore_id);
-    //   //zg = zg_;
-    // }
 
     // Determine the operation type.
     uint32_t op_r = op_type_rand.next_u32();
@@ -205,43 +155,7 @@ int worker_proc(void* arg) {
     //tenant_id = 0;
     if(args->zipf_theta < 1) key_i = zg.next();
     else key_i = nextUint64(&hzg);
-    // uint64_t s_time = sw.now();
-    // key_i = nextUint64(&hzg);
-    // total_measure_time += sw.diff_in_ns(sw.now(), s_time);
-    // total_measure_count += 1;
-    // if(total_measure_count % 1048576 == 0){
-    //   printf("%lf ms\n", (total_measure_time - last_total_time) / 1000. / 1000.);
-    //   last_total_time = total_measure_time;
-    // }
-    //if(key_i > num_items + 1) printf("key > num_items!key is:%lu\n", key_i);
-    // if(!(infile >> input_line)){
-    //   // printf("end of file!\n");
-    //   // infile.clear();
-    //   // infile.seekg(0, infile.beg);
-    //   continue;
-    // }
-    //printf("%s\n", input_line.c_str());
     
-    // std::vector<std::string> svec;
-    // std::vector<int> comma_pos;
-    // for(int i = 0; i < input_line.size(); ++i){
-    //   if(input_line[i] == ',') comma_pos.push_back(i);
-    // }
-    // for(int i = 0; i < comma_pos.size() - 1; ++i){
-    //   svec.push_back(input_line.substr(comma_pos[i] + 1, comma_pos[i+1] - comma_pos[i] - 1));
-    // }
-    // for(auto item : svec){
-    //   std::cout << item << '\t';
-    // }
-    // std::cout << std::endl;
-
-    // const char* key_twitter = svec[0].c_str();
-    // int key_l = atoi(svec[1].c_str());
-    // if(key_l > key_length) key_l = key_length;
-    // for(int i = 0; i < key_l; ++i){
-    //   key[i] = svec[0][i];
-    // }
-    // bool is_get = svec[4] == "get" ? true : false;
     uint64_t* key_ptr = reinterpret_cast<uint64_t*>(key);
     *key_ptr = key_i;
     //tenant_id = op_r % tenant_count;
@@ -267,23 +181,14 @@ int worker_proc(void* arg) {
       client.handle_response(rh);
     }
 
-    if (!use_noop) {//user_loop = false;
-      if (is_get)
-        client.get(key_hash, key, key_length);
-      else {
-        value_i = seq;
-        uint64_t* value_ptr = reinterpret_cast<uint64_t*>(value);
-        *value_ptr = value_i;
-        //printf("value length=%d, sizeof(value)=%d\n", value_length, sizeof(value));
-        client.set(key_hash, key, key_length, value, value_length, true);
-      }
-    } else {
-      if (is_get)
-        client.noop_read(key_hash, key, key_length);
-      else {
-        value_i = seq;
-        client.noop_write(key_hash, key, key_length, value, value_length);
-      }
+    if (is_get)
+      client.get(key_hash, key, key_length);
+    else {
+      value_i = seq;
+      uint64_t* value_ptr = reinterpret_cast<uint64_t*>(value);
+      *value_ptr = value_i;
+      //printf("value length=%d, sizeof(value)=%d\n", value_length, sizeof(value));
+      client.set(key_hash, key, key_length, value, value_length, true);
     }
 
     seq++;
