@@ -45,10 +45,10 @@ Compiling DPDK
          # Optimization: try to increase "CONFIG_RTE_MEMPOOL_CACHE_MAX_SIZE" to 4096 in build/.config (but it can also break mempool initialization)
          * make -j
 
-Compiling SIMKV
+Compiling Genie
 --------------
 
-         * cd SIMKV/build
+         * cd Genie/build
          * ln -s ../../dpdk-16.11 ./dpdk
          * cmake ..
          * make -j
@@ -56,7 +56,7 @@ Compiling SIMKV
 Setting up the general environment
 ----------------------------------
 
-         * cd SIMKV/build
+         * cd Genie/build
          * ln -s src/mica/test/*.json .
          * ../script/setup.sh 8192 8192    # 2 NUMA nodes, 16 Ki pages (32 GiB)
          * killall etcd; ../../etcd-v2.2.1-linux-amd64/etcd &
@@ -74,7 +74,7 @@ Setting up the DPDK environment
 Running microbench
 ------------------
 
-         * cd SIMKV/build
+         * cd Genie/build
          * sudo ./microbench 0.00          # 0.00 = uniform key popularity
 
 Authors
