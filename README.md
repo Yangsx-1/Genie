@@ -3,14 +3,12 @@ Genie
 
 Genie – A Lightweight Serverless Infrastructure For In-Memory Key-Value Caching With Fine-Grained And Prompt Elasticity
 
-Genie, a lightweight serverless infrastructure for in-memory key-value caching with fine-grained and immediate elasticity.
-In Genie, a novel approach is adopted
-to enable dynamic and independent resource allocation to multiple tenants. 
+Genie is a lightweight serverless infrastructure for in-memory key-value caching with fine-grained and immediate elasticity.
+In Genie, a novel approach is adopted to enable dynamic and independent resource allocation to multiple tenants. 
 It processes all arrived requests and estimates the vCPU consumption with a lightweight machine-learning approach for fine-grained billing. 
 Moreover, Genie estimates the working set of each tenant and dynamically resizes the allocated memory to guarantee the hit ratio requirements.
 Evaluation results show that CPU estimation can be achieved at an interval of every 100 microseconds with almost no impact on system performance.
-Besides, it could resize the memory
-capacity in a few seconds at megabytes level according to the calculated memory size.
+Besides, it could resize the memory capacity in a few seconds at megabytes level according to the calculated memory size.
 The holistic design incurs 1%-2% performance degradation compared to our baseline.
 Moreover, Genie achieves an average of 58.3% CPU and 49.9% memory savings compared to AsparaDB for Memcache.
 
