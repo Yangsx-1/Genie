@@ -1,4 +1,4 @@
-Serverless Network Function
+Genie
 ======
 
 Serverless NF – Fine-Grained Resource Allocation with Real-Time Elasticity and Pay-Per-Use Billing
