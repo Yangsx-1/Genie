@@ -91,6 +91,33 @@ Running Server
         * sudo ./server 0.9 8 0.5 2048
         * The four parameters are target_hit_ratio(0~1), thread_num, LRU_threshold(0.5~1), initial_log_size(MB) respectively
 
+Core code
+-----------------
+
+The source code are mainly in Genie/src/mica
+
+### alloc
+
+### datagram
+
+### directory
+
+### eaet
+
+### network
+
+### parda
+
+### pool
+
+### processor
+
+### table
+
+### test
+
+### util
+
 Authors
 -------
 
