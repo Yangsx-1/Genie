@@ -97,26 +97,37 @@ Core code
 The source code are mainly in Genie/src/mica
 
 ### alloc
+This folder contains a set of operations on manipulating huge pages, and the core implementation of mount and unmount huge pages dynamically in running time is also in this folder.
 
 ### datagram
+This folder contains the statistic functions for client and server, some network related functions and MLP parameters. Because all the statistic informations used by MLP model are outputed by functions here, we merge the MLP model into this file.
 
 ### directory
+This folder contains some etcd related functions.
 
 ### eaet
+This folder contains the implementation of EAET algorithm. Refer to (PACE: Penalty Aware Cache Modeling with Enhanced AET)[https://dl.acm.org/doi/abs/10.1145/3265723.3265736].
 
 ### network
+This folder contains network related functions based on DPDK and use UDP protocol.
 
 ### parda
+This floder contains the implementation of PARDA algorithm. Refer to (PARDA: A Fast Parallel Reuse Distance Analysis Algorithm)[https://ieeexplore.ieee.org/abstract/document/6267930].
 
 ### pool
+This folder contains the implementation of circular log used as the basic key-value store data structure.
 
 ### processor
+This folder contains the process functions and partition related functions, after network process, the key-value get/set will be processed through these functions.
 
 ### table
+This folder contains a high performance hash table used in the system for fast kv lookup.
 
 ### test
+This folder contains the basic test, client and server file. All files in this task will be compiled to an excutable file. The json files are config files used in starting client and server.
 
 ### util
+This folder contains some useful functions, for example, the hash functions, the random number generator and the zipf distribution generator.
 
 Authors
 -------
