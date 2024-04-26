@@ -35,7 +35,7 @@ Dependencies for execution
 
  * bash >= 4.0
  * python >= 3.4
- * etcd >= 2.2
+ * etcd >= 2.2, etcd should be open on both client and server
 
 Compiling DPDK
 --------------
@@ -76,6 +76,20 @@ Running microbench
 
          * cd Genie/build
          * sudo ./microbench 0.00          # 0.00 = uniform key popularity
+
+Running Netbench
+------------------
+
+        * cd Genie/build
+        * sudo sudo ./netbench 0 0.5 8 8 256
+        * The five parameters are zipf_theta(0~1), get_ratio(0~1), key_size(byte), value_size(byte), item_number(x1048576) respectively
+
+Running Server
+-----------------
+
+        * cd Genie/build
+        * sudo ./server 0.9 8 0.5 2048
+        * The four parameters are target_hit_ratio(0~1), thread_num, LRU_threshold(0.5~1), initial_log_size(MB) respectively
 
 Authors
 -------
