@@ -37,6 +37,25 @@ Dependencies for execution
  * python >= 3.4
  * etcd >= 2.2, etcd should be open on both client and server
 
+ For example, if we adopt 40 as client and 36 as server, the etcd command should be as follows:
+ 36:
+ etcd --name infra0 --initial-advertise-peer-urls http://10.176.64.36:2380 \
+  --listen-peer-urls http://10.176.64.36:2380 \
+  --listen-client-urls http://10.176.64.36:2379,http://127.0.0.1:2379 \
+  --advertise-client-urls http://10.176.64.36:2379 \
+  --initial-cluster-token etcd-cluster-1 \
+  --initial-cluster infra0=http://10.176.64.36:2380,infra1=http://10.176.64.40:2380 \
+  --initial-cluster-state new
+
+40:
+etcd --name infra1 --initial-advertise-peer-urls http://10.176.64.40:2380 \
+  --listen-peer-urls http://10.176.64.40:2380 \
+  --listen-client-urls http://10.176.64.40:2379,http://127.0.0.1:2379 \
+  --advertise-client-urls http://10.176.64.40:2379 \
+  --initial-cluster-token etcd-cluster-1 \
+  --initial-cluster infra0=http://10.176.64.36:2380,infra1=http://10.176.64.40:2380 \
+  --initial-cluster-state new
+
 Compiling DPDK
 --------------
 
